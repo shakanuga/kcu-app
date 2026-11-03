@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "kicker/_macros.html" import match_row %}
+{% block title %}{{ m.short or m.name }} · Kicker{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('kicker.index', jahr=year or None) }}">← Kicker-Statistik</a>
+<div class="page-head">
+  <div>
+    <p class="card-kicker">Spielerprofil{% if year %} · {{ year }}{% endif %}</p>
+    <h1 class="page-title">{% if m.number %}<span class="red">#{{ m.number }}</span> {% endif %}{{ m.short or m.name }}</h1>
+    {% if aliases %}<p class="small muted">Im Kickertool auch: {{ aliases | join(', ') }}</p>{% endif %}
+  </div>
+</div>
+<div class="chips static filter-chips">
+  <a class="fchip {{ 'on' if not year }}" href="{{ url_for('kicker.spieler', mid=m.id) }}">Alle Jahre</a>
+  {% for y in years %}<a class="fchip {{ 'on' if year == y }}" href="{{ url_for('kicker.spieler', mid=m.id, jahr=y) }}">{{ y }}</a>{% endfor %}
+</div>
+
+{% if not p %}
+<div class="card empty"><p class="muted">Keine Spiele {{ 'in ' ~ year if year else '' }} gefunden.</p></div>
+{% else %}
+<div class="kpis">
+  <div class="kpi"><span>Sterne</span><b class="stars">★ {{ p.stars }}</b></div>
+  <div class="kpi"><span>Siegquote</span><b>{{ p.win_pct }} %</b></div>
+  <div class="kpi"><span>Spiele / Turniere</span><b>{{ p.games }} <small>/ {{ p.n_tournaments }}</small></b></div>
+  <div class="kpi"><span>Turniersiege</span><b>🏆 {{ tit.gold }}</b></div>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h3>Bilanz</h3>
+    <ul class="facts">
+      <li><span>Siege – Niederlagen</span><b>{{ p.wins }} – {{ p.losses }}</b></li>
+      <li><span>Tore</span><b>{{ p.gf }}:{{ p.ga }} ({{ '%+d' % p.goal_diff }})</b></li>
+      <li><span>Tore / Gegentore pro Spiel</span><b>{{ p.gf_avg }} / {{ p.ga_avg }}</b></li>
+      <li><span>Längste Siegesserie</span><b>🔥 {{ p.best_streak }}</b></li>
+      <li><span>Zu-Null-Siege / -Pleiten</span><b>{{ p.shutout_wins }} / {{ p.shutout_losses }}</b></li>
+      <li><span>10:0 verteilt / kassiert (Kasten)</span><b>{{ p.kasten_wins }} / {{ p.kasten_losses }}</b></li>
+      <li><span>Podest</span><b>🥇 {{ tit.gold }} · 🥈 {{ tit.silver }} · 🥉 {{ tit.bronze }}</b></li>
+      <li><span>Form (letzte 10)</span><b><span class="formdots big">{% for f in p.form %}<i class="f-{{ f }}"></i>{% endfor %}</span></b></li>
+    </ul>
+  </section>
+  <section class="card">
+    <h3>Duos & Duelle</h3>
+    <ul class="facts">
+      {% if p.best_partner %}<li><span>🤝 Traumpartner</span><b>{{ res.members[p.best_partner.id].short }} · {{ p.best_partner.pct }} % in {{ p.best_partner.games }} Spielen</b></li>{% endif %}
+      {% if p.worst_partner and p.worst_partner != p.best_partner %}<li><span>🙈 Lieber nicht zusammen</span><b>{{ res.members[p.worst_partner.id].short }} · {{ p.worst_partner.pct }} %</b></li>{% endif %}
+      {% if p.nemesis %}<li><span>😈 Angstgegner</span><b>{{ res.members[p.nemesis.id].short }} · nur {{ p.nemesis.pct }} % Siege</b></li>{% endif %}
+      {% if p.victim and p.victim != p.nemesis %}<li><span>🎯 Lieblingsgegner</span><b>{{ res.members[p.victim.id].short }} · {{ p.victim.pct }} % Siege</b></li>{% endif %}
+    </ul>
+    {% if p.partners %}
+    <details class="more-table"><summary>Alle Partner & Gegner</summary>
+      <table class="tbl small">
+        <thead><tr><th>Mitspieler</th><th class="r">zusammen</th><th class="r">Quote</th><th class="r">gegeneinander</th><th class="r">Quote</th></tr></thead>
+        <tbody>
+        {% set opp = {} %}{% for o in p.opponents %}{% set _ = opp.update({o.id: o}) %}{% endfor %}
+        {% for x in p.partners %}
+          <tr><td>{{ res.members[x.id].short }}</td><td class="r">{{ x.games }}</td><td class="r">{{ x.pct }} %</td>
+            <td class="r">{{ opp[x.id].games if x.id in opp else '–' }}</td><td class="r">{{ (opp[x.id].pct ~ ' %') if x.id in opp else '–' }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% endif %}
+  </section>
+</div>
+
+{% if per_year | length > 1 %}
+<section class="card">
+  <h3>Siege pro Jahr</h3>
+  {% set mx = per_year | map(attribute='1.games') | max %}
+  <div class="yearbars">
+    {% for y, v in per_year %}
+    <a class="yb" href="{{ url_for('kicker.spieler', mid=m.id, jahr=y) }}" title="{{ v.wins }} Siege in {{ v.games }} Spielen">
+      <span class="yb-bar"><i class="g" style="height: {{ (100 * v.games / mx) | round }}%"></i><i class="w" style="height: {{ (100 * v.wins / mx) | round }}%"></i></span>
+      <b>{{ v.wins }}</b><small>{{ y }}</small>
+    </a>
+    {% endfor %}
+  </div>
+  <p class="hint">Hell = Spiele, rot = Siege.</p>
+</section>
+{% endif %}
+
+{% if tit.won %}
+<section class="card">
+  <h3>Turniersiege</h3>
+  <ul class="events">{% for w in tit.won | sort(attribute='date', reverse=true) %}<li><span class="ev-date">{{ w.date | date_de }}</span><span class="ev-title"><a href="{{ url_for('kicker.turnier', tid=w.id) }}">🏆 {{ w.name }}</a></span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <h3>Letzte Spiele</h3>
+  <div class="mlist">{% for x in last %}<div class="mline"><small class="muted">{{ x.t_date | date_de }} · {{ x.t_name }}</small>{{ match_row(x, res) }}</div>{% endfor %}</div>
+</section>
+{% endif %}
+{% endblock %}

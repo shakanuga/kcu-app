@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Abstimmungen{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Abstimmungen</h1>
+  {% if user.id %}<a class="btn btn-primary" href="{{ url_for('main.abstimmung_form') }}">+ Abstimmung</a>{% endif %}
+</div>
+
+{% macro poll_card(p) %}
+<a class="list-card poll-card {{ 'is-voted' if p.voted }}" href="{{ url_for('main.abstimmung', pid=p.id) }}">
+  <span class="lc-ico">{{ '🔒' if p.audience == 'vorstand' else '🗳️' }}</span>
+  <span class="lc-body">
+    <b>{{ p.title }}</b>
+    <small>{{ p.n }} Stimme{{ 'n' if p.n != 1 }}{% if p.closes_at %} · bis {{ p.closes_at[:10] | date_de }} {{ p.closes_at[11:] }}{% endif %}{% if p.anonymous %} · anonym{% endif %}{% if p.audience == 'vorstand' %} · nur Vorstand{% endif %} · von {{ p.created_by }}</small>
+  </span>
+  {% if p.voted %}<span class="my-rsvp my-ja">abgestimmt</span>{% elif poll_status(p) == 'offen' and user.id %}<span class="my-rsvp my-open">Stimme fehlt</span>{% endif %}
+</a>
+{% endmacro %}
+
+<h2 class="section-title">Laufend</h2>
+<div class="list-cards">
+  {% for p in open_polls %}{{ poll_card(p) }}{% else %}<div class="card empty"><p class="muted">Gerade läuft keine Abstimmung.</p></div>{% endfor %}
+</div>
+
+{% if closed_polls %}
+<h2 class="section-title">Beendet</h2>
+<div class="list-cards">{% for p in closed_polls %}{{ poll_card(p) }}{% endfor %}</div>
+{% endif %}
+<p class="hint">Jedes Mitglied kann eine Abstimmung starten – z. B. „Termin verschieben?“ oder „Wann fahren wir?“.</p>
+{% endblock %}

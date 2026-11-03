@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Vorstand{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="card-kicker">🔒 Nur für den Vorstand</p>
+    <h1 class="page-title">Vorstandsbereich</h1>
+    <p class="muted small">Sichtbar für: {% for m in board %}{{ m.short or m.name }}{{ ', ' if not loop.last }}{% else %}niemand{% endfor %}. Admins ohne Vorstandsrolle sehen hier nichts.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-primary" href="{{ url_for('main.abstimmung_form') }}">+ Vorstandsabstimmung</a>
+  </div>
+</div>
+
+<div class="grid-2 vorstand-grid">
+  <div>
+    <section class="card form-card">
+      <h3>{{ 'Notiz bearbeiten' if edit else 'Neue Notiz / Planung' }}</h3>
+      <form class="form" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+        <input type="text" name="title" value="{{ edit.title if edit else '' }}" placeholder="Titel, z. B. Planung Jubiläum" required maxlength="150">
+        <textarea name="body" rows="{{ 10 if edit else 4 }}" placeholder="Markdown: **fett**, - Liste, - [ ] To-do">{{ edit.body if edit else '' }}</textarea>
+        <label class="check"><input type="checkbox" name="pinned" value="1" {{ 'checked' if edit and edit.pinned }}> oben anpinnen</label>
+        <div class="actions">
+          <button class="btn btn-primary">Speichern</button>
+          {% if edit %}<a class="btn" href="{{ url_for('main.vorstand') }}">Abbrechen</a>{% endif %}
+        </div>
+      </form>
+    </section>
+
+    {% for n in notes %}
+    <article class="card note {{ 'pinned' if n.pinned }}">
+      <div class="card-head">
+        <h3>{% if n.pinned %}📌 {% endif %}{{ n.title }}</h3>
+        <span class="note-actions">
+          <a href="{{ url_for('main.vorstand', edit=n.id) }}">Bearbeiten</a>
+          <form method="post" data-confirm="Notiz „{{ n.title }}“ löschen?">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="id" value="{{ n.id }}">
+            <button class="linkbtn red" name="delete" value="1">Löschen</button>
+          </form>
+        </span>
+      </div>
+      {% if n.body %}<div class="prose">{{ n.body | markdown }}</div>{% endif %}
+      <p class="small muted">{{ n.created_by }} · {{ (n.updated_at or n.created_at)[:10] | date_de }}</p>
+    </article>
+    {% else %}
+    <div class="card empty"><p class="muted">Noch keine Notizen. Hier ist Platz für Ideen, Planungen und Beschlussvorlagen.</p></div>
+    {% endfor %}
+  </div>
+
+  <div>
+    <section class="card">
+      <div class="card-head"><h3>Vorstandsabstimmungen</h3></div>
+      {% if polls %}
+      <ul class="events">
+        {% for p in polls %}<li><span class="ev-date">{{ poll_status(p) }}</span><span class="ev-title"><a href="{{ url_for('main.abstimmung', pid=p.id) }}">{{ p.title }}</a></span></li>{% endfor %}
+      </ul>
+      {% else %}<p class="muted">Keine. Mit „+ Vorstandsabstimmung“ und „Nur Vorstand“ startest du eine private.</p>{% endif %}
+    </section>
+
+    <section class="card">
+      <h3>Kassenwart-Vertretung</h3>
+      {% if vertretung %}
+        <p>Aktuell: <b>{{ vertretung.member.short or vertretung.member.name }}</b> bis {{ vertretung.bis | date_de }}.</p>
+        <form method="post" action="{{ url_for('main.kasse_vertretung') }}">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="btn btn-small" name="clear" value="1">Vertretung beenden</button>
+        </form>
+      {% else %}
+      <form class="form" method="post" action="{{ url_for('main.kasse_vertretung') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <div class="row">
+          <select name="member_id">
+            {% for m in board %}<option value="{{ m.id }}">{{ m.short or m.name }} (Vorstand)</option>{% endfor %}
+            {% for m in members %}<option value="{{ m.id }}">{{ m.short or m.name }}</option>{% endfor %}
+          </select>
+          <input type="date" name="bis" value="{{ today }}" required>
+        </div>
+        <button class="btn btn-primary">Vertretung festlegen</button>
+      </form>
+      <p class="hint">Die Vertretung darf bis zum Datum Strafen, Zahlungen und Kosten eintragen – wie der Kassenwart.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h3>Offene Beträge ab 30 €</h3>
+      {% if debtors %}
+      <ul class="feed">
+        {% for a in debtors | sort(attribute='open', reverse=true) %}
+        <li><span class="feed-who"><a href="{{ url_for('main.kasse_mitglied', mid=a.member.id) }}">{{ a.member.short or a.member.name }}</a></span><span class="feed-what">{% if a.open >= 50 %}<span class="tag tag-red">kein Fahrt-Zuschuss</span>{% endif %}</span><span class="feed-amt">{{ a.open | euro }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">Niemand mit mehr als 30 € offen. 👏</p>{% endif %}
+    </section>
+
+    {% if projects %}
+    <section class="card">
+      <h3>Deine Planungsteams</h3>
+      <ul class="events">{% for p in projects %}<li><span class="ev-date">🧳</span><span class="ev-title"><a href="{{ url_for('main.projekt', pid=p.id) }}">{{ p.title }}</a></span></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

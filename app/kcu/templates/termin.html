@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ e.title }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.termine') }}">← Termine</a>
+<div class="page-head">
+  <div>
+    <p class="card-kicker">{{ 'Sitzung' if e.kind == 'sitzung' else 'Termin' }}{% if e.cancelled %} · <span class="red">abgesagt</span>{% endif %}</p>
+    <h1 class="page-title">{{ e.title }}</h1>
+    <p class="event-meta">
+      {% if e.date %}📅 {{ e.date | date_de(true) }}{% else %}📅 {{ e.label or 'Datum offen' }}{% endif %}
+      {% if e.time %} · 🕢 {{ e.time }} Uhr{% endif %}
+      {% if e.location %} · 📍 {{ e.location }}{% endif %}
+    </p>
+    {% if e.note %}<p class="muted">{{ e.note }}</p>{% endif %}
+  </div>
+  <div class="actions">
+    {% if can('termine') %}<a class="btn" href="{{ url_for('main.termin_form', eid=e.id) }}">Bearbeiten</a>{% endif %}
+    <a class="btn" href="{{ url_for('main.abstimmung_form', termin=e.id, vorlage='verschieben') }}">Abstimmung</a>
+  </div>
+</div>
+
+{% if e.rsvp and not e.cancelled %}
+<section class="card rsvp-card">
+  <div class="card-head">
+    <h3>Deine Rückmeldung</h3>
+    {% if e.rsvp_until %}<span class="small {{ 'red' if deadline_passed else 'muted' }}">Frist: {{ e.rsvp_until | date_de }}{% if deadline_passed %} (abgelaufen){% endif %}</span>{% endif %}
+  </div>
+  {% if user.id %}{% include "_rsvp_buttons.html" %}{% else %}<p class="muted">Als Admin ohne Mitgliedseintrag kannst du nicht antworten.</p>{% endif %}
+</section>
+
+{% if kw_absent %}
+<div class="card warn-card">
+  <b>💶 Der Kassenwart kann nicht.</b>
+  {% if vertretung %}
+    <p>Vertretung: <b>{{ vertretung.member.short or vertretung.member.name }}</b> bis {{ vertretung.bis | date_de }}.</p>
+  {% elif can('vorstand') or 'kassenwart' in user.roles %}
+    <form class="inline-pay" method="post" action="{{ url_for('main.kasse_vertretung') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="bis" value="{{ e.date }}">
+      <span>Vertretung für diesen Termin:</span>
+      <select name="member_id">
+        {% for m in vorstand %}<option value="{{ m.id }}">{{ m.short or m.name }} (Vorstand)</option>{% endfor %}
+        {% for m in members %}<option value="{{ m.id }}">{{ m.short or m.name }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-primary">Festlegen</button>
+    </form>
+  {% else %}
+    <p class="muted">Der Vorstand kann eine Vertretung bestimmen.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="rsvp-columns">
+  {% for key, title, cls in [('ja', 'Dabei', 'yes'), ('vielleicht', 'Vielleicht', 'maybe'), ('nein', 'Abgesagt', 'no')] %}
+  <section class="card rsvp-col {{ cls }}">
+    <h3>{{ title }} <span class="count">{{ summary.count.get(key, 0) }}</span></h3>
+    <ul>
+      {% for r in summary.groups[key] %}
+      <li><b>{{ r.short or r.name }}</b>
+        {% if r.reason %}<span class="reason">„{{ r.reason }}“</span>{% endif %}
+        {% if r.guests %}<span class="guests">+ {{ r.guests }}</span>{% endif %}
+        {% if e.rsvp_until and r.updated_at[:10] > e.rsvp_until %}<span class="tag tag-amber">spät</span>{% endif %}
+      </li>
+      {% else %}<li class="muted">–</li>{% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+  <section class="card rsvp-col open">
+    <h3>Noch keine Antwort <span class="count">{{ summary.open | length }}</span></h3>
+    <ul>{% for m in summary.open %}<li><b>{{ m.short or m.name }}</b></li>{% else %}<li class="muted">Alle haben geantwortet 👏</li>{% endfor %}</ul>
+    {% if can('kasse') and summary.open and deadline_passed %}
+    <form method="post" action="{{ url_for('main.termin_strafe_offen', eid=e.id) }}" data-confirm="Strafe Nr. 4 („Nicht abgestimmt“) für alle Genannten eintragen?">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      {% for m in summary.open %}<input type="hidden" name="member_ids" value="{{ m.id }}">{% endfor %}
+      <button class="btn btn-small btn-danger">Strafe 4 an alle ohne Antwort</button>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% elif e.cancelled %}
+<div class="card"><p>Dieser Termin fällt aus.</p></div>
+{% endif %}
+
+{% if polls %}
+<section class="card">
+  <h3>Abstimmungen zu diesem Termin</h3>
+  <ul class="events">{% for p in polls %}<li><span class="ev-date">{{ poll_status(p) }}</span><span class="ev-title"><a href="{{ url_for('main.abstimmung', pid=p.id) }}">{{ p.title }}</a></span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

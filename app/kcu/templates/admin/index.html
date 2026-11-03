@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1 class="page-title">Admin</h1>
+{% include "admin/_nav.html" %}
+
+<div class="page-head">
+  <h2 class="section-title">Mitglieder</h2>
+  <a class="btn btn-primary" href="{{ url_for('main.admin_member') }}">+ Mitglied</a>
+</div>
+<section class="card">
+  <div class="table-wrap">
+  <table class="tbl">
+    <thead><tr><th>#</th><th>Name</th><th class="hide-s">E-Mail (Login)</th><th>Rolle</th><th class="hide-s">Status</th><th></th></tr></thead>
+    <tbody>
+    {% for m in members %}
+      <tr class="{{ 'dim' if m.status == 'ehemalig' }}">
+        <td class="code">{{ m.number }}</td>
+        <td>{{ m.name }}<div class="muted small show-s">{{ m.email or 'keine E-Mail' }}</div></td>
+        <td class="hide-s">{% if m.email %}{{ m.email }}{% else %}<span class="tag tag-amber">fehlt</span>{% endif %}</td>
+        <td>{% for r in rmap.get(m.id, []) | sort %}<span class="tag role-{{ r }}">{{ ROLE_LABEL[r] }}</span> {% else %}<span class="muted">Mitglied</span>{% endfor %}</td>
+        <td class="hide-s">{{ {'aktiv':'Aktiv','ehren':'Ehrenmitglied','ehemalig':'Ehemalig'}.get(m.status, m.status) }}</td>
+        <td class="r"><a class="btn btn-small" href="{{ url_for('main.admin_member', mid=m.id) }}">Bearbeiten</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <h3>Zugänge für Cloudflare Access</h3>
+  <p>Diese Adressen gehören in die Access-Regel (Include → Emails). Nur wer dort steht, kommt überhaupt bis zur App.</p>
+  {% if emails %}
+    <textarea class="copybox" readonly rows="3" onclick="this.select()">{{ emails | join(', ') }}</textarea>
+  {% else %}
+    <p class="muted">Noch keine E-Mail-Adressen eingetragen.</p>
+  {% endif %}
+  <p class="hint">Anmeldemodus: <b>{{ 'Cloudflare Access (produktiv)' if cf_mode else ('Testmodus' if dev_mode else 'nicht eingerichtet') }}</b>
+    {% if admin_emails %} · Admins per Container-Variable: {{ admin_emails | join(', ') }}{% endif %}</p>
+</section>
+{% endblock %}

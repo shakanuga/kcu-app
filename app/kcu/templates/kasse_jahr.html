@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Jahresübersicht {{ year }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.kasse') }}">← Kasse</a>
+<div class="page-head">
+  <h1 class="page-title">Beiträge {{ year }}</h1>
+  <div class="chips static filter-chips">
+    {% for y in years %}<a class="fchip {{ 'on' if y == year }}" href="{{ url_for('main.kasse_jahr', year=y) }}">{{ y }}</a>{% endfor %}
+  </div>
+</div>
+<section class="card table-card">
+  <div class="table-wrap">
+  <table class="tbl year-grid">
+    <thead>
+      <tr><th class="sticky-col">Mitglied</th>
+        {% for mo in months %}<th class="c {{ 'now' if '%d-%02d' % (year, loop.index) == current }}">{{ mo }}</th>{% endfor %}
+        <th class="r">{{ 'Kontostand' if year == cur_year else ('offen ' ~ year if year < cur_year else '') }}</th></tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="sticky-col"><a href="{{ url_for('main.kasse_mitglied', mid=r.m.id) }}"><b>{{ r.m.short or r.m.name }}</b></a></td>
+        {% for key in r.grid %}{% set c = r.grid[key] %}
+        <td class="c cell-{{ c.state }} {{ 'now' if key == current }}" title="{% if c.due %}Beitrag {{ c.due | euro }}{% if c.state in ('open','partial') %} – offen {{ (c.due - c.paid) | euro }}{% endif %}{% endif %}{% for p in c.pens %}&#10;{{ p.title }}: {{ p.amount | euro }}{{ ' (bezahlt)' if p.paid else ' (offen)' }}{% endfor %}">
+          {% if c.state == 'paid' %}<span class="ok">✓</span>
+          {% elif c.state == 'future_paid' %}<span class="pre">✓</span>
+          {% elif c.state == 'open' %}<span class="no">{{ '%g' % c.due }}</span>
+          {% elif c.state == 'partial' %}<span class="no">{{ '%g' % (c.due - c.paid) }}</span>
+          {% else %}<span class="none">·</span>{% endif %}
+          {% for p in c.pens %}<i class="pen {{ 'paid' if p.paid else 'open' }}">+{{ '%g' % p.amount }}</i>{% endfor %}
+        </td>
+        {% endfor %}
+        <td class="r {{ 'neg' if r.open and r.open > 0 else 'pos' if r.open and r.open < 0 }}">{% if r.open is not none %}<b>{% if r.open < 0 %}{{ (-r.open) | euro }} Guthaben{% else %}{{ r.open | euro }}{% endif %}</b>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td class="sticky-col"><b>offen</b></td>{% for k, v in totals.items() %}<td class="c">{% if v > 0 %}<span class="no">{{ '%g' % v }}</span>{% endif %}</td>{% endfor %}<td></td></tr>
+    </tfoot>
+  </table>
+  </div>
+  <p class="legend"><span class="ok">✓</span> bezahlt · <span class="pre">✓</span> im Voraus bezahlt · <span class="no">10</span> offen (€) · <i class="pen open">+1</i> Strafe offen · <i class="pen paid">+1</i> Strafe bezahlt</p>
+  <p class="hint">Zahlungen werden automatisch den ältesten offenen Posten zugeordnet – genau wie beim Abhaken auf Papier. Zahlungen mit „für Monat“ zählen genau für diesen Monat.
+    {% if year == cur_year %}„Kontostand“ rechts ist der aktuelle Stand inkl. Resten aus Vorjahren.{% elif year < cur_year %}Rechts steht, was aus {{ year }} noch offen ist.{% else %}{{ year }} zeigt nur Vorauszahlungen – abgerechnet wird ab Januar {{ year }}.{% endif %}</p>
+</section>
+{% endblock %}

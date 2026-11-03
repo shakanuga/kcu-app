@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Protokolle{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Protokolle</h1>
+  {% if can('redaktion') %}<div class="actions"><a class="btn" href="{{ url_for('main.protokoll_import') }}">⬆ PDFs importieren</a><a class="btn btn-primary" href="{{ url_for('main.protokoll_form') }}">+ Neues Protokoll</a></div>{% endif %}
+</div>
+{% if rows %}
+<div class="list-cards">
+  {% for p in rows %}
+  <a class="list-card" href="{{ url_for('main.protokoll', pid=p.id) }}">
+    <span class="lc-date"><b>{{ p.date[8:10] }}</b><small>{{ p.date[5:7] }}/{{ p.date[2:4] }}</small></span>
+    <span class="lc-body"><b>{{ p.title }}</b><small>{% if p.file %}📎 PDF · {% endif %}von {{ p.created_by }}</small></span>
+    <span class="lc-arrow">›</span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty"><p class="big-emoji">📝</p><p>Noch keine Protokolle.</p></div>
+{% endif %}
+{% endblock %}

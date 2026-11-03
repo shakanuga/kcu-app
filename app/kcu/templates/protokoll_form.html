@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Protokoll{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.protokoll', pid=p.id) if p else url_for('main.protokolle') }}">← zurück</a>
+<h1 class="page-title">{{ 'Protokoll bearbeiten' if p else 'Neues Protokoll' }}</h1>
+<form class="card form" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="row">
+    <label>Datum der Sitzung<input type="date" name="date" value="{{ p.date if p else today }}" required></label>
+    <label>Titel<input type="text" name="title" value="{{ p.title if p else '' }}" placeholder="Sitzung vom …" maxlength="150"></label>
+  </div>
+  <label>Protokoll
+    <textarea name="body" rows="16" placeholder="## Anwesend&#10;Kalle, Toni, Jojo …&#10;&#10;## Beschlüsse&#10;- …&#10;&#10;## Beiträge bezahlt&#10;- …&#10;&#10;## To-dos&#10;- [ ] …">{{ p.body if p else '' }}</textarea>
+  </label>
+  <p class="hint">Formatierung: <code>## Überschrift</code>, <code>- Liste</code>, <code>**fett**</code>. Alternativ oder zusätzlich ein PDF anhängen.</p>
+  <label>PDF anhängen<input type="file" name="file" accept="application/pdf"></label>
+  {% if p and p.file %}
+    <label class="check"><input type="checkbox" name="remove_file" value="1"> Angehängtes PDF „{{ p.file_name }}“ entfernen</label>
+  {% endif %}
+  <button class="btn btn-primary" type="submit">Speichern</button>
+</form>
+{% endblock %}

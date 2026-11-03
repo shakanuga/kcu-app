@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Jahresrückblick{% endblock %}
+{% block content %}
+<div class="card narrow empty">
+  <p class="big-emoji">🎆</p>
+  <h1 class="page-title">Jahresrückblick {{ year }}</h1>
+  <p>Dein persönlicher Rückblick mit Strafen, Sternen, Traumpartner und Titel des Jahres gibt's an <b>Silvester</b>.</p>
+  {% if days > 0 %}<p class="muted">Noch {{ days }} Tage.</p>{% endif %}
+  {% if can('admin') %}<p><a class="btn btn-small" href="{{ url_for('main.rueckblick', year=year, vorschau=1) }}">Vorschau ansehen (Admin)</a></p>{% endif %}
+</div>
+{% endblock %}

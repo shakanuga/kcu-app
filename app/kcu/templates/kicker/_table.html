@@ -1,0 +1,23 @@
+{% set teamish = o.entry == 'team' %}
+{% set bracketish = o.mode in ('ko', 'doko') %}
+<table class="tbl live-table">
+  <thead><tr><th>#</th><th>{{ 'Team' if teamish else 'Spieler' }}</th>
+    {% if o.mode == 'lms' %}<th class="r">Leben</th>{% elif bracketish %}<th class="r">S</th><th class="r">N</th>{% else %}<th class="r">★</th>{% endif %}
+    {% if o.mode == 'swiss' %}<th class="r" title="Buchholz: Summe der Siege eurer Gegner">BH</th>{% endif %}
+    <th class="r">Sp</th><th class="r">Tore</th><th class="r">Diff</th></tr></thead>
+  <tbody>
+  {% for r in table %}
+    <tr class="{{ 'out' if (o.mode == 'lms' and (r.lives or 0) == 0) or (o.mode == 'ko' and r.losses >= 1) or (o.mode == 'doko' and r.losses >= 2) }} {{ 'lead' if r.place == 1 }}">
+      <td class="rank">{{ r.place }}</td>
+      <td><b>{% for n in r.members %}{{ res.label(n) }}{{ ' & ' if not loop.last }}{% endfor %}</b></td>
+      {% if o.mode == 'lms' %}<td class="r hearts">{% for i in range(o.lives | int) %}<i class="{{ 'on' if i < (r.lives or 0) }}">♥</i>{% endfor %}</td>
+      {% elif bracketish %}<td class="r">{{ r.wins }}</td><td class="r">{{ r.losses }}</td>
+      {% else %}<td class="r stars">{{ r.points }}</td>{% endif %}
+      {% if o.mode == 'swiss' %}<td class="r muted">{{ r.buchholz }}</td>{% endif %}
+      <td class="r">{{ r.games }}</td>
+      <td class="r">{{ r.gf }}:{{ r.ga }}</td>
+      <td class="r {{ 'pos' if r.diff > 0 else 'neg' if r.diff < 0 }}">{{ '%+d' % r.diff }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>

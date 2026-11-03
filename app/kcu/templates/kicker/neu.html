@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Turnier starten{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('kicker.index') }}">← Kicker</a>
+<h1 class="page-title">Turnier starten</h1>
+<p class="muted">Alle Modi aus dem Kickertool – direkt hier in der App. Ergebnisse landen automatisch in der Statistik.</p>
+
+<form class="card form" method="post" data-tournament-form>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+  <fieldset class="mode-pick">
+    <legend>Modus</legend>
+    {% set cur = form.get('mode') or 'monster_dyp' %}
+    {% for k, (icon, desc) in info.items() %}
+    <label class="mode-opt"><input type="radio" name="mode" value="{{ k }}" {{ 'checked' if cur == k }}>
+      <span><em class="mode-icon">{{ icon }}</em><b>{{ modes[k] }}</b><small>{{ desc }}</small></span>
+    </label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="seg-pick" data-only="round_robin swiss ko doko">
+    <legend>Wer tritt an?</legend>
+    {% set ent = form.get('entry') or 'einzel' %}
+    <label class="segopt"><input type="radio" name="entry" value="einzel" {{ 'checked' if ent == 'einzel' }}><span>👤 Einzel (1 gegen 1)</span></label>
+    <label class="segopt"><input type="radio" name="entry" value="team" {{ 'checked' if ent == 'team' }}><span>👥 Feste 2er-Teams</span></label>
+  </fieldset>
+
+  <div class="label">Wer spielt mit?</div>
+  <div class="chips" data-chips>
+    {% for m in members %}
+    <label class="chip"><input type="checkbox" name="member_ids" value="{{ m.id }}" {{ 'checked' if m.status == 'aktiv' and not form }}><span>{% if m.number %}<i>{{ m.number }}</i> {% endif %}{{ m.short or m.name }}</span></label>
+    {% endfor %}
+    <button type="button" class="chip chip-all" data-chips-all>Keine</button>
+  </div>
+  <label>Gäste (mit Komma getrennt)<input type="text" name="guests" value="{{ form.get('guests', '') }}" placeholder="z. B. Pia, Kathi"></label>
+
+  <div data-only="round_robin swiss ko doko" data-entry="team">
+    <label>Teams bilden
+      <select name="teambuild">
+        <option value="zufall">Zufällig auslosen</option>
+        <option value="snake" {{ 'selected' if form.get('teambuild') == 'snake' }}>Ausgeglichen (Stärkster mit Schwächstem, nach ★)</option>
+      </select>
+    </label>
+    <label>Teams selbst festlegen (optional, ein Team pro Zeile – der Rest wird gebildet wie oben gewählt)
+      <textarea name="teams_manual" rows="3" placeholder="Kalle, Toni&#10;Jojo, Benni">{{ form.get('teams_manual', '') }}</textarea>
+    </label>
+  </div>
+
+  <div class="row">
+    <label>Name (optional)<input type="text" name="name" maxlength="80" value="{{ form.get('name', '') }}" placeholder="z. B. Oktober-Sitzung"></label>
+    <label class="narrow-field">Tore bis Sieg<input type="number" name="ziel" min="1" max="99" value="{{ form.get('ziel') or settings.kicker_ziel or 10 }}"></label>
+    <label class="narrow-field" data-only="lms">Leben<input type="number" name="lives" min="1" max="9" value="{{ form.get('lives') or 2 }}"></label>
+    <label class="narrow-field" data-only="monster_dyp whist swiss">Runden<input type="number" name="rounds" min="1" max="50" value="{{ form.get('rounds', '') }}" placeholder="auto"></label>
+  </div>
+  <div class="row" data-only="ko doko">
+    <label>Setzliste
+      <select name="seeding">
+        <option value="zufall">Zufällig</option>
+        <option value="staerke" {{ 'selected' if form.get('seeding') == 'staerke' }}>Nach Stärke (★) – Favoriten treffen sich spät</option>
+      </select>
+    </label>
+    <label class="check" data-only="ko"><input type="checkbox" name="third" value="1" {{ 'checked' if form.get('third') or not form }}> Spiel um Platz 3</label>
+  </div>
+  <label>Disziplin
+    <select name="discipline"><option value="kicker">Kicker</option><option value="bierpong">Bierpong</option><option value="flunky">Flunkyball</option><option value="sonstiges">Test (zählt nicht)</option></select>
+  </label>
+  <button class="btn btn-primary btn-wide">Auslosen & loslegen</button>
+  <details class="hint">
+    <summary>Was bedeuten „Runden“ und „Freilos“?</summary>
+    <p><b>Monster-DYP:</b> Runden leer = es geht weiter, bis ihr „Turnier beenden“ drückt. Wer aussetzen musste, ist in der nächsten Runde sicher dabei.
+      <b>Whist:</b> leer = so viele Runden, dass jeder einmal mit jedem gespielt hat. <b>Schweizer System:</b> leer = passende Rundenzahl für eure Gruppengröße.</p>
+    <p>Geht die Zahl im Turnierbaum nicht auf (z. B. 6 statt 8), bekommen die ersten Gesetzten ein <b>Freilos</b> und sind automatisch eine Runde weiter.</p>
+  </details>
+</form>
+{% endblock %}

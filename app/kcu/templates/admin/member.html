@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Mitglied{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.admin') }}">← Admin</a>
+<h1 class="page-title">{{ m.name if m else 'Neues Mitglied' }}</h1>
+<form class="card form" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="row">
+    <label>Name<input type="text" name="name" value="{{ m.name if m else '' }}" required></label>
+    <label>Rufname<input type="text" name="short" value="{{ m.short if m else '' }}" placeholder="z. B. Kalle"></label>
+    <label class="narrow-field">Nummer<input type="text" name="number" value="{{ m.number if m else '' }}" maxlength="4"></label>
+  </div>
+  <div class="row">
+    <label>Geburtstag<input type="date" name="birthday" value="{{ m.birthday if m and m.birthday else '' }}"></label>
+  </div>
+  <label>E-Mail-Adresse (zum Anmelden)<input type="email" name="email" value="{{ m.email if m and m.email else '' }}" placeholder="name@beispiel.de"></label>
+  <div class="row">
+    <label>Status
+      <select name="status">
+        {% for k, v in {'aktiv':'Aktiv (zahlt Beitrag)','ehren':'Ehrenmitglied (beitragsfrei)','ehemalig':'Ehemalig / abtrünnig'}.items() %}
+        <option value="{{ k }}" {{ 'selected' if m and m.status == k }}>{{ v }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+  <fieldset class="role-pick">
+    <legend>Rollen <span class="muted small">– mehrere möglich, ohne Haken = normales Mitglied</span></legend>
+    <div class="chips">
+      {% for r in roles %}
+      <label class="chip-check"><input type="checkbox" name="roles" value="{{ r }}" {{ 'checked' if r in my_roles }}><span>{{ ROLE_LABEL[r] }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <label>Aufgabe(n) – Anzeige-Text<input type="text" name="aufgabe" value="{{ m.aufgabe if m and m.aufgabe else '' }}" placeholder="z. B. Vorstand · Kassenwart"></label>
+  <div class="row">
+    <label>Beitrag ab (JJJJ-MM)<input type="month" name="joined" value="{{ m.joined if m and m.joined else '' }}"></label>
+    <label>Beitrag bis (JJJJ-MM)<input type="month" name="left_at" value="{{ m.left_at if m and m.left_at else '' }}"></label>
+    <label>Startsaldo (€)<input type="text" inputmode="decimal" name="opening" value="{{ ('%.2f'|format(m.opening)).replace('.', ',') if m else '0,00' }}"></label>
+  </div>
+  <p class="hint">Startsaldo: offener Betrag aus der alten Kasse beim Start der App (positiv = Schulden, negativ = Guthaben).
+    „Beitrag ab“ leer lassen = ab Kassenstart.</p>
+  <label class="narrow-field">Sortierung<input type="number" name="sort" value="{{ m.sort if m else 100 }}"></label>
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">Speichern</button>
+    {% if m %}<button class="btn btn-danger" type="submit" name="delete" value="1" data-confirm-btn="Mitglied wirklich löschen?">Löschen</button>{% endif %}
+  </div>
+</form>
+<div class="card hint-card">
+  <b>Was die Rollen dürfen</b>
+  <ul>
+    <li><b>Mitglied</b> (keine Rolle) – sieht alles Öffentliche, trägt Strafen ein, sagt zu/ab, stimmt ab, startet Abstimmungen</li>
+    <li><b>Redaktion</b> – zusätzlich Protokolle, Museum und Satzung pflegen</li>
+    <li><b>Kassenwart</b> – Zahlungen, Kosten/Kassenbuch, alle Strafen löschen, Vertretung bestimmen</li>
+    <li><b>Vorstand</b> – privater Vorstandsbereich, Vorstandsabstimmungen, Termine anlegen/verschieben, Kasse wie der Kassenwart</li>
+    <li><b>Admin</b> – Mitglieder, Rollen, Strafenkatalog, Einstellungen. Sieht den Vorstandsbereich <i>nicht</i>, solange er nicht selbst Vorstand ist.</li>
+  </ul>
+</div>
+{% endblock %}

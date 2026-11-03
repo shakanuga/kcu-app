@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Galerie{% endblock %}
+{% block content %}
+<h1 class="page-title">Galerie</h1>
+
+{% if missing %}
+  <div class="card"><p>Der Bilder-Ordner ist noch nicht eingebunden. Im Container muss ein Ordner nach <code>/photos</code> gemappt sein, z. B. <code>/mnt/user/Kickerclub/Galerie</code>.</p></div>
+{% else %}
+  <nav class="crumbs">
+    <a href="{{ url_for('main.galerie') }}">Alle Alben</a>
+    {% for name, path in crumbs %}<span>›</span><a href="{{ url_for('main.galerie', rel=path) }}">{{ name }}</a>{% endfor %}
+  </nav>
+
+  {% if listing.folders %}
+  <div class="albums">
+    {% for f in listing.folders %}
+    <a class="album" href="{{ url_for('main.galerie', rel=f.rel) }}">
+      {% if f.cover %}<img loading="lazy" src="{{ url_for('main.foto', size='thumb', rel=f.cover) }}" alt="">{% else %}<span class="album-empty">📁</span>{% endif %}
+      <span class="album-label"><b>{{ f.name }}</b><small>{{ f.count }} Bild{{ '' if f.count == 1 else 'er' }}</small></span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if listing.images or listing.videos %}
+  <div class="photos" data-lightbox-group>
+    {% for i in listing.images %}
+    <a class="photo" href="{{ url_for('main.foto', size='medium', rel=i.rel) }}" data-lightbox data-original="{{ url_for('main.foto', size='original', rel=i.rel) }}" data-caption="{{ i.name }}">
+      <img loading="lazy" src="{{ url_for('main.foto', size='thumb', rel=i.rel) }}" alt="{{ i.name }}">
+    </a>
+    {% endfor %}
+    {% for v in listing.videos %}
+    <div class="photo video"><video controls preload="metadata" src="{{ url_for('main.foto', size='original', rel=v.rel) }}"></video></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not listing.folders and not listing.images and not listing.videos %}
+    <div class="card"><p class="muted">Hier ist noch nichts drin. Fotos landen im Ordner <code>Kickerclub/Galerie</code> auf dem Server – jeder Unterordner wird ein Album.</p></div>
+  {% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,18 @@
+# Laufzeitdaten – gehören NIE ins Repo
+data/
+*.db
+*.db-journal
+*.sqlite*
+secret_key
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+*.zip
+.DS_Store
+Thumbs.db
+
+# Vereinsdaten nur auf dem Server
+seed.json
+satzung.pdf

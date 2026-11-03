@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ p.name }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.projekte') }}">← Projekte</a>
+<div class="page-head">
+  <div>
+    <p class="card-kicker">{{ '🔒 Geheim – nur das Planungsteam sieht das' if p.status == 'geheim' else '✅ Freigegeben am ' ~ (p.released_at[:10] | date_de) ~ ' von ' ~ p.released_by }}</p>
+    <h1 class="page-title">{{ p.name }}</h1>
+    {% if p.description %}<p class="muted">{{ p.description }}</p>{% endif %}
+  </div>
+  {% if in_team %}<a class="btn" href="{{ url_for('main.projekt_form', pid=p.id) }}">Bearbeiten</a>{% endif %}
+</div>
+
+<div class="kpis">
+  <div class="kpi"><span>Ausgaben</span><b class="red">{{ totals.out | euro }}</b></div>
+  <div class="kpi"><span>Einnahmen</span><b class="green">{{ totals.inc | euro }}</b></div>
+  <div class="kpi"><span>Budget</span><b>{{ (p.budget | euro) if p.budget else '–' }}</b></div>
+  <div class="kpi"><span>{{ 'Rest' if p.budget else 'Saldo' }}</span>
+    <b class="{{ 'red' if p.budget and totals.net > p.budget }}">{{ ((p.budget - totals.net) if p.budget else -totals.net) | euro }}</b></div>
+</div>
+
+{% if in_team and p.status == 'geheim' %}
+<div class="card secret-card">
+  <p>Kassenstand <b>inklusive</b> eurer geheimen Ausgaben: <b>{{ cash_hidden | euro }}</b>.
+     Der Rest des Vereins sieht weiterhin den Stand ohne dieses Projekt.</p>
+  <form method="post" action="{{ url_for('main.projekt_freigeben', pid=p.id) }}" data-confirm="Projekt jetzt für den ganzen Verein freigeben? Das lässt sich nicht rückgängig machen.">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <button class="btn btn-primary">Abrechnung freigeben</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="grid-2 wide-left">
+  <section class="card">
+    <h3>Abrechnung</h3>
+    {% if entries %}
+    <ul class="ledger-list">
+      {% for l in entries %}
+      <li>
+        <div class="ll-main"><b>{{ l.purpose }}</b><div class="ll-meta">{{ l.date | date_de }} · {{ l.created_by }}</div></div>
+        <div class="ll-amt {{ 'green' if l.kind == 'einnahme' else 'red' }}">{{ '+' if l.kind == 'einnahme' else '−' }}{{ l.amount | euro }}</div>
+        {% if in_team %}
+        <form method="post" action="{{ url_for('main.projekt_eintrag_loeschen', pid=p.id, lid=l.id) }}" data-confirm="Eintrag löschen?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="icon-btn">✕</button></form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Noch keine Einträge.</p>{% endif %}
+  </section>
+
+  <div>
+    {% if in_team %}
+    <form class="card" method="post" action="{{ url_for('main.projekt_eintrag', pid=p.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <h3>Eintrag hinzufügen</h3>
+      <div class="seg">
+        <label><input type="radio" name="kind" value="ausgabe" checked><span>Ausgabe</span></label>
+        <label><input type="radio" name="kind" value="einnahme"><span>Einnahme</span></label>
+      </div>
+      <div class="row">
+        <label>Betrag (€)<input type="text" inputmode="decimal" name="amount" required placeholder="249,00"></label>
+        <label>Datum<input type="date" name="date" value="{{ today }}"></label>
+      </div>
+      <label>Zweck<input type="text" name="purpose" required maxlength="200" placeholder="z. B. Anzahlung Unterkunft"></label>
+      <button class="btn btn-primary">Speichern</button>
+    </form>
+    {% endif %}
+    <section class="card">
+      <h3>Planungsteam</h3>
+      <div class="chips static">
+        {% for m in team %}<span class="chip"><span>{% if m.number %}<i>{{ m.number }}</i>{% endif %}{{ m.short or m.name }}</span></span>{% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

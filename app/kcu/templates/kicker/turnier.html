@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "kicker/_macros.html" import match_row, bracket_view %}
+{% block title %}{{ t.name }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('kicker.turniere') }}">← Turniere</a>
+<div class="page-head">
+  <div>
+    <p class="card-kicker">{{ discipline_label(t.discipline) }} · {{ mode_label(t.mode) }} · {{ 'in der App gespielt' if t.source == 'live' else 'aus Kickertool importiert' }}</p>
+    <h1 class="page-title">{{ t.name }}</h1>
+    <p class="muted">{{ t.date | date_de(true) }} · {{ n }} Spiele</p>
+  </div>
+  <div class="actions"><a class="btn btn-small" href="{{ url_for('kicker.export', tid=t.id) }}" download>⬇︎ Export (JSON)</a></div>
+</div>
+
+{% if bracket %}
+<section class="card bracket-card">
+  <h3>Turnierbaum</h3>
+  {{ bracket_view(bracket, res) }}
+</section>
+{% endif %}
+
+<div class="grid-2 wide-left">
+  <div>
+    {% for (stage, rno, label), ms in rounds %}
+    <section class="card">
+      <h3>{{ label if stage == 'ko' else ('Runde ' ~ label if label and label[0].isdigit() else label) }}</h3>
+      <div class="mlist">{% for m in ms %}{{ match_row(m, res) }}{% endfor %}</div>
+    </section>
+    {% endfor %}
+  </div>
+  <div>
+    {% if standings %}
+    <section class="card">
+      <h3>Platzierung</h3>
+      <ol class="podium-list">
+        {% for s in standings %}
+        <li class="{{ 'p' ~ s.place if s.place and s.place <= 3 }}"><span class="pl">{{ s.place or '–' }}</span><span>{{ s.label }}</span></li>
+        {% endfor %}
+      </ol>
+    </section>
+    {% endif %}
+    <section class="card">
+      <h3>{{ '🏅 Zählt für die Statistik' if wertung[0] else '🎉 Zum Spaß – zählt nicht' }}</h3>
+      <p class="small muted">{% if wertung[1] == 'auto' %}Automatisch: Pro Spielabend zählt nur der erste gespielte Modus.{% else %}Von Hand festgelegt.{% endif %}</p>
+      {% if can('kicker_verwalten') %}
+      <form method="post" class="seg-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        {% set cur = 'auto' if t.counts is none else ('ja' if t.counts == 1 else 'nein') %}
+        <div class="seg sortseg">
+          {% for v, l in [('auto', 'Automatisch'), ('ja', 'Zählt'), ('nein', 'Zum Spaß')] %}
+          <button class="{{ 'on' if cur == v }}" name="wertung" value="{{ v }}">{{ l }}</button>
+          {% endfor %}
+        </div>
+      </form>
+      {% endif %}
+    </section>
+    {% if can('kicker_verwalten') %}
+    <section class="card">
+      <h3>Bearbeiten</h3>
+      <form class="form" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <label>Name<input type="text" name="name" value="{{ t.name }}" maxlength="100"></label>
+        <label>Datum<input type="date" name="date" value="{{ t.date }}"></label>
+        <label>Disziplin
+          <select name="discipline">
+            {% for d, l in [('kicker','Kicker – zählt in die Statistik'), ('bierpong','Bierpong'), ('flunky','Flunkyball'), ('sonstiges','Sonstiges / Test – zählt nicht')] %}
+            <option value="{{ d }}" {{ 'selected' if t.discipline == d }}>{{ l }}</option>{% endfor %}
+          </select>
+        </label>
+        <div class="actions">
+          <button class="btn btn-primary">Speichern</button>
+          <button class="btn btn-danger" name="delete" value="1" data-confirm-btn="Turnier mit allen Spielen löschen?">Löschen</button>
+        </div>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

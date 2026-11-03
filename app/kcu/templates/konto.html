@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Konto {{ m.short or m.name }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.kasse') }}">← Kasse</a>
+<div class="profile-head">
+  <span class="jersey">{{ m.number or '★' }}</span>
+  <div>
+    <h1 class="page-title">{{ m.name }}</h1>
+    <p class="muted">{{ m.aufgabe or 'Mitglied' }}</p>
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><span>Offen</span><b class="{{ 'red' if acc.open > 0 else 'green' }}">{{ acc.open | euro }}</b></div>
+  <div class="kpi"><span>Beiträge ({{ acc.months }} Monate)</span><b>{{ acc.dues | euro }}</b></div>
+  <div class="kpi"><span>Strafen ({{ acc.penalty_count }})</span><b>{{ acc.penalties | euro }}</b></div>
+  <div class="kpi"><span>Gezahlt</span><b>{{ acc.paid | euro }}</b></div>
+</div>
+{% if acc.opening %}<p class="muted small">Inklusive Startsaldo aus der alten Kasse: {{ acc.opening | euro }}</p>{% endif %}
+{% if acc.no_trip_subsidy %}<p class="warn">⚠ Ab 50 € Schulden gibt's keinen Zuschuss aus der Mannschaftskasse für die Mannschaftsfahrt (Strafe 8).</p>{% endif %}
+
+{% if can('kasse') %}
+<form class="card inline-pay" method="post" action="{{ url_for('main.zahlung') }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="member_id" value="{{ m.id }}">
+  <b>Zahlung buchen</b>
+  <input type="text" inputmode="decimal" name="amount" placeholder="Betrag" value="{{ '%.2f'|format(acc.open) if acc.open > 0 else '' }}" required>
+  <select name="method"><option value="bar">Bar</option><option value="paypal">PayPal</option><option value="ueberweisung">Überweisung</option><option value="verrechnet">Verrechnet</option></select>
+  <input type="text" name="note" placeholder="Notiz">
+  <input type="month" name="period" title="Für Monat (optional)">
+  <input type="date" name="date" value="{{ today }}">
+  <button class="btn btn-primary">Buchen</button>
+</form>
+{% endif %}
+
+<div class="grid-2">
+  <section class="card">
+    <h3>Strafen</h3>
+    {% if pens %}
+    <ul class="ledger-list">
+      {% for p in pens %}
+      <li><div class="ll-main">{{ p.title }}<div class="ll-meta">{{ p.date | date_de }}{% if p.note %} · „{{ p.note }}“{% endif %}</div></div>
+          <div class="ll-amt">{% if p.natural %}{{ p.natural }}{% else %}{{ p.amount | euro }}{% endif %}</div></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Eine weiße Weste. Respekt.</p>{% endif %}
+  </section>
+  <section class="card">
+    <h3>Zahlungen</h3>
+    {% if pays %}
+    <ul class="ledger-list">
+      {% for p in pays %}
+      <li><div class="ll-main">{{ p.note or 'Zahlung' }}<div class="ll-meta">{{ p.date | date_de }}{% if p.period %} · für {{ p.period | ym_de }}{% endif %}{% if p.method %} · {{ pay_method_label(p.method) }}{% endif %}</div></div>
+          <div class="ll-amt green">+{{ p.amount | euro }}</div></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Noch keine Zahlungen.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

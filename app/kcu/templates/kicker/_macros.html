@@ -1,0 +1,35 @@
+{% macro team(names, res) -%}
+{%- if names == ['__FREILOS__'] %}<i class="bye">Freilos</i>
+{%- elif not names %}<i class="tbd">offen</i>
+{%- else %}{% for n in names %}{{ res.label(n) }}{{ ' & ' if not loop.last }}{% endfor %}{% endif -%}
+{%- endmacro %}
+
+{% macro match_row(m, res) -%}
+{% set w1 = m.score1 is not none and m.score1 > m.score2 %}
+{% set w2 = m.score1 is not none and m.score2 > m.score1 %}
+<div class="mrow">
+  <span class="mteam l {{ 'win' if w1 }}">{{ team(m.t1, res) }}</span>
+  <span class="mscore">{% if m.score1 is not none %}{{ m.score1 }}<i>:</i>{{ m.score2 }}{% else %}–{% endif %}</span>
+  <span class="mteam r {{ 'win' if w2 }}">{{ team(m.t2, res) }}</span>
+</div>
+{%- endmacro %}
+
+{% macro bracket_view(cols, res, current_id=None) -%}
+<div class="bracket">
+  {% for c in cols %}
+  <div class="bcol bcol-{{ c.stage }}">
+    <div class="bcol-title">{{ c.title }}</div>
+    <div class="bcol-matches">
+    {% for m in c.matches %}
+      {% set w1 = m.score1 is not none and m.score1 > m.score2 %}
+      {% set w2 = m.score1 is not none and m.score2 > m.score1 %}
+      <div class="bmatch st-{{ m.status }} {{ 'now' if m.id == current_id }}">
+        <div class="bside {{ 'win' if w1 or (m.status == 'freilos' and m.t2 == ['__FREILOS__']) }}"><span>{{ team(m.t1, res) }}</span><b>{{ m.score1 if m.score1 is not none }}</b></div>
+        <div class="bside {{ 'win' if w2 or (m.status == 'freilos' and m.t1 == ['__FREILOS__']) }}"><span>{{ team(m.t2, res) }}</span><b>{{ m.score2 if m.score2 is not none }}</b></div>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{%- endmacro %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ it.name }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.museum') }}">← Museum</a>
+<div class="exhibit-detail">
+  <div class="ed-photos" data-lightbox-group>
+    {% if photos %}
+      {% for ph in photos %}
+      <a class="{{ 'ed-main' if loop.first else 'ed-thumb' }}" href="{{ url_for('main.files', name=ph.file) }}" data-lightbox data-original="{{ url_for('main.files', name=ph.file, dl=1) }}">
+        <img src="{{ url_for('main.files', name=ph.file) }}" alt="{{ it.name }}">
+      </a>
+      {% endfor %}
+    {% else %}
+      <div class="ed-main ed-empty">👕</div>
+    {% endif %}
+  </div>
+  <div class="ed-info">
+    <p class="card-kicker">{{ it.year or 'Ohne Jahr' }}{% if it.category %} · {{ it.category }}{% endif %}</p>
+    <h1 class="page-title">{{ it.name }}</h1>
+    <span class="status status-{{ it.status }} static">{{ merch_status_label(it.status) }}</span>
+    {% if it.description %}<div class="prose">{{ it.description | markdown }}</div>{% endif %}
+    {% if can('redaktion') %}
+    <div class="actions">
+      <a class="btn" href="{{ url_for('main.museum_form', iid=it.id) }}">Bearbeiten</a>
+      <form method="post" action="{{ url_for('main.museum_loeschen', iid=it.id) }}" data-confirm="„{{ it.name }}“ wirklich aus dem Museum entfernen?">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn btn-danger">Löschen</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

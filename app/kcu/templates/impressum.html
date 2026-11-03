@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impressum · {{ s.club_name or 'Kicker Club United' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}"></head>
+<body><main class="page narrow">
+  <section class="card">
+    <h1 class="page-title">Impressum</h1>
+    <p class="muted">{{ s.club_name or 'Kicker Club United' }}</p>
+    <div class="impressum-text">{{ text }}</div>
+    <p class="hint">Diese Seite gehört zu einer nicht öffentlichen Vereins-App. Zugang nur für Mitglieder.</p>
+  </section>
+</main></body></html>

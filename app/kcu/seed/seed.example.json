@@ -1,0 +1,130 @@
+{
+  "_info": "Beispiel-Startdaten (erfunden). Eigene Daten als seed.json in den Data-Ordner legen – siehe README.",
+  "settings": {
+    "stammbier": "Pils vom Fass",
+    "satzung_label": "Satzung · 1. Auflage"
+  },
+  "members": [
+    {
+      "name": "Karl Beispiel",
+      "short": "Kalle",
+      "number": "10",
+      "status": "aktiv",
+      "aufgabe": "Vorstand",
+      "roles": [
+        "vorstand"
+      ]
+    },
+    {
+      "name": "Antonia Muster",
+      "short": "Toni",
+      "number": "7",
+      "status": "aktiv",
+      "aufgabe": "Kassenwartin",
+      "roles": [
+        "kassenwart"
+      ]
+    },
+    {
+      "name": "Johanna Probe",
+      "short": "Jojo",
+      "number": "23",
+      "status": "aktiv",
+      "aufgabe": "Protokoll",
+      "roles": [
+        "redaktion"
+      ]
+    },
+    {
+      "name": "Benjamin Test",
+      "short": "Benni",
+      "number": "4",
+      "status": "aktiv",
+      "aufgabe": "",
+      "roles": []
+    },
+    {
+      "name": "Erika Ehrenwert",
+      "short": "Erika",
+      "number": "",
+      "status": "ehren",
+      "aufgabe": "Ehrenmitglied",
+      "roles": []
+    }
+  ],
+  "catalog": [
+    {
+      "kind": "strafe",
+      "code": "1",
+      "title": "Mehr als 10 Minuten zu spät",
+      "description": "",
+      "amount": 5.0,
+      "natural": null
+    },
+    {
+      "kind": "strafe",
+      "code": "2",
+      "title": "Unabgemeldetes Fehlen",
+      "description": "",
+      "amount": 10.0,
+      "natural": null
+    },
+    {
+      "kind": "strafe",
+      "code": "3",
+      "title": "Nicht rechtzeitig zu- oder abgesagt",
+      "description": "",
+      "amount": 2.0,
+      "natural": null
+    },
+    {
+      "kind": "schnell",
+      "code": "01",
+      "title": "Ball im Kicker liegen lassen",
+      "description": "Strafe für alle Spieler des letzten Spiels",
+      "amount": 1.0,
+      "natural": null
+    },
+    {
+      "kind": "schnell",
+      "code": "02",
+      "title": "10:0 verlieren",
+      "description": "Strafe für das Verliererteam",
+      "amount": 0.0,
+      "natural": "1 Kasten"
+    },
+    {
+      "kind": "schnell",
+      "code": "03",
+      "title": "Ball fliegt raus",
+      "description": "Strafe für den Rauskegler",
+      "amount": 0.5,
+      "natural": null
+    }
+  ],
+  "events": [
+    {
+      "title": "Sommerfeier",
+      "date": null,
+      "label": "im Sommer",
+      "note": ""
+    },
+    {
+      "title": "Weihnachtsfeier",
+      "date": null,
+      "label": "Dezember",
+      "note": ""
+    }
+  ],
+  "aliases": {
+    "Toni": [
+      "tonito"
+    ],
+    "Kalle": [
+      "kalli"
+    ]
+  },
+  "guests": [
+    "gast"
+  ]
+}

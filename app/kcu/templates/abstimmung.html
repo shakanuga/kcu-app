@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ p.title }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.vorstand') if p.audience == 'vorstand' else url_for('main.abstimmungen') }}">← {{ 'Vorstand' if p.audience == 'vorstand' else 'Abstimmungen' }}</a>
+<div class="page-head">
+  <div>
+    <p class="card-kicker">{{ 'Vorstandsabstimmung' if p.audience == 'vorstand' else 'Abstimmung' }} · {{ 'beendet' if closed else 'läuft' }}{% if p.anonymous %} · anonym{% endif %}{% if p.kind == 'multi' %} · Mehrfachauswahl{% endif %}</p>
+    <h1 class="page-title">{{ p.title }}</h1>
+    <p class="muted small">gestartet von {{ p.created_by }} am {{ p.created_at[:10] | date_de }}{% if p.closes_at %} · {{ 'endete' if closed else 'läuft bis' }} {{ p.closes_at[:10] | date_de }}, {{ p.closes_at[11:] }} Uhr{% endif %}</p>
+    {% if event %}<p class="small">📅 Zum Termin: <a href="{{ url_for('main.termin', eid=event.id) }}">{{ event.title }} ({{ event.date | date_de }})</a></p>{% endif %}
+  </div>
+</div>
+{% if p.description %}<div class="card prose">{{ p.description | markdown }}</div>{% endif %}
+
+{% if not closed and user.id and not (p.anonymous and voted) %}
+<form class="card poll-form" method="post" action="{{ url_for('main.abstimmung_stimme', pid=p.id) }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <h3>{{ 'Stimme ändern' if voted else 'Deine Stimme' }}</h3>
+  <div class="poll-options">
+    {% for r in results.options %}
+    <label class="poll-opt">
+      <input type="{{ 'checkbox' if p.kind == 'multi' else 'radio' }}" name="option" value="{{ r.option.id }}" {{ 'checked' if r.option.id in my_options }}>
+      <span>{{ r.option.label }}</span>
+    </label>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary">Abstimmen</button>
+  {% if p.anonymous %}<p class="hint">Anonym: Es wird nur gespeichert, <i>dass</i> du abgestimmt hast – nicht wofür. Deshalb kannst du deine Stimme danach nicht mehr ändern.</p>{% endif %}
+</form>
+{% elif voted and not closed %}
+<div class="card"><p>✓ Du hast abgestimmt.</p></div>
+{% endif %}
+
+<section class="card">
+  <div class="card-head"><h3>Ergebnis</h3><span class="muted small">{{ results.total }} Stimme{{ 'n' if results.total != 1 }}</span></div>
+  {% if show %}
+  <ul class="poll-results">
+    {% for r in results.options %}
+    <li class="{{ 'top' if r.top and closed }}">
+      <div class="pr-head"><span>{{ r.option.label }}{% if r.top and closed %} 🏆{% endif %}</span><b>{{ r.count }}</b></div>
+      <div class="bar"><span style="width: {{ r.pct }}%"></span></div>
+      {% if r.names %}<small class="muted">{{ r.names | join(', ') }}</small>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Das Ergebnis siehst du {{ 'nach deiner Stimme' if p.show_results == 'nach_abstimmung' else 'nach Ende der Abstimmung' }}.</p>
+  {% endif %}
+  {% if results.missing and not closed %}
+  <p class="small muted">Noch nicht abgestimmt: {% for m in results.missing %}{{ m.short or m.name }}{{ ', ' if not loop.last }}{% endfor %}</p>
+  {% endif %}
+</section>
+
+{% if may_manage %}
+<form class="actions" method="post" action="{{ url_for('main.abstimmung_beenden', pid=p.id) }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  {% if not closed %}<button class="btn">Abstimmung jetzt beenden</button>{% endif %}
+  <button class="btn btn-danger" name="delete" value="1" data-confirm-btn="Abstimmung samt Stimmen löschen?">Löschen</button>
+  {% if closed and event and can('termine') %}<a class="btn" href="{{ url_for('main.termin_form', eid=event.id) }}">Termin anpassen</a>{% endif %}
+</form>
+{% endif %}
+{% endblock %}

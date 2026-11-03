@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Bearbeiten' if it else 'Neues Stück' }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.museum_item', iid=it.id) if it else url_for('main.museum') }}">← zurück</a>
+<h1 class="page-title">{{ 'Stück bearbeiten' if it else 'Neues Museumsstück' }}</h1>
+
+<form class="card form" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <label>Name<input type="text" name="name" value="{{ it.name if it else '' }}" required maxlength="120" placeholder="z. B. Heimtrikot rot"></label>
+  <div class="row">
+    <label>Jahr<input type="number" name="year" min="2000" max="2100" value="{{ it.year if it and it.year else '' }}" placeholder="2019"></label>
+    <label>Kategorie
+      <select name="category">
+        <option value="">–</option>
+        {% for c in categories %}<option {{ 'selected' if it and it.category == c }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+  <p class="label">Status</p>
+  <div class="seg">
+    {% for key, label in statuses.items() %}
+    <label><input type="radio" name="status" value="{{ key }}" {{ 'checked' if (it and it.status == key) or (not it and key == 'vorhanden') }}><span>{{ label }}</span></label>
+    {% endfor %}
+  </div>
+  <label>Geschichte dazu<textarea name="description" rows="6" placeholder="Wer hat's entworfen, wie viele gab es, welche Anekdote gehört dazu?">{{ it.description if it else '' }}</textarea></label>
+  <label>Fotos hinzufügen<input type="file" name="photos" accept="image/*" multiple></label>
+  {% if photos %}
+  <div class="photo-manage">
+    {% for ph in photos %}
+    <div class="pm"><img src="{{ url_for('main.files', name=ph.file) }}" alt="">
+      <button class="icon-btn" form="del-{{ ph.id }}" title="Foto entfernen">✕</button></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <button class="btn btn-primary" type="submit">Speichern</button>
+</form>
+{% for ph in photos %}
+<form id="del-{{ ph.id }}" method="post" action="{{ url_for('main.museum_foto_loeschen', pid=ph.id) }}" data-confirm="Foto entfernen?">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}"></form>
+{% endfor %}
+<p class="hint">Fotos werden automatisch verkleinert und Standortdaten (GPS) entfernt.</p>
+{% endblock %}

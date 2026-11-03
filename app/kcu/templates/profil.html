@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ m.short or m.name }}{% endblock %}
+{% block content %}
+{% set av = avatar_url(m) %}
+<section class="profile-hero">
+  <div class="ph-avatar">{% if av %}<img src="{{ av }}" alt="">{% else %}<span>{{ m.number or (m.short or m.name)[:1] }}</span>{% endif %}</div>
+  <div class="ph-main">
+    <p class="card-kicker">{{ {'aktiv':'Aktives Mitglied','ehren':'Ehrenmitglied','ehemalig':'Ehemalig'}[m.status] }}{% if m.number %} · #{{ m.number }}{% endif %}</p>
+    <h1 class="page-title">{{ m.short or m.name }}</h1>
+    <p class="muted">{{ m.name }}{% if m.aufgabe %} · {{ m.aufgabe }}{% endif %}</p>
+    {% if m.bio %}<p class="ph-bio">„{{ m.bio }}“</p>{% endif %}
+    <div class="player-tags">
+      {% for r in roles %}<span class="tag role-{{ r }}">{{ ROLE_LABEL[r] }}</span>{% else %}<span class="tag">Mitglied</span>{% endfor %}
+      {% if vertretung %}<span class="tag role-kassenwart">Kassenwart-Vertretung</span>{% endif %}
+    </div>
+  </div>
+  {% if can('admin') %}<a class="btn btn-small ph-edit" href="{{ url_for('main.admin_member', mid=m.id) }}">Account bearbeiten</a>{% endif %}
+</section>
+
+<div class="kpis">
+  <div class="kpi"><span>Kicker-Sterne</span><b class="stars">★ {{ k.stars if k else 0 }}</b></div>
+  <div class="kpi"><span>Turniersiege</span><b>🏆 {{ titles }}</b></div>
+  <div class="kpi"><span>Zusagen {{ today[:4] }}</span><b>{{ yes }}</b></div>
+  <div class="kpi"><span>Strafen {{ today[:4] }}</span><b>{{ n_pens }}</b></div>
+</div>
+
+<div class="grid-2">
+  <div>
+    {% if own %}
+    <form class="card form" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <h3>👤 Mein Profil <small class="muted">– sehen alle Mitglieder</small></h3>
+      <div class="avatar-edit">
+        <div class="ph-avatar small">{% if av %}<img src="{{ av }}" alt="">{% else %}<span>{{ m.number or '?' }}</span>{% endif %}</div>
+        <div>
+          <label>Profilbild<input type="file" name="avatar" accept="image/*"></label>
+          {% if av %}<label class="check"><input type="checkbox" name="remove_avatar" value="1"> Bild entfernen</label>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <label>Rufname (wird überall angezeigt)<input type="text" name="short" value="{{ m.short or '' }}" maxlength="40" required></label>
+        <label>Geburtstag<input type="date" name="birthday" value="{{ m.birthday or '' }}"></label>
+      </div>
+      <div class="row">
+        <label>Lieblingsposition
+          <select name="position">{% for k2, v in positions.items() %}<option value="{{ k2 }}" {{ 'selected' if (m.position or '') == k2 }}>{{ v }}</option>{% endfor %}</select>
+        </label>
+        <label>Spruch / Motto<input type="text" name="bio" value="{{ m.bio or '' }}" maxlength="200" placeholder="z. B. Wer nicht trifft, zahlt."></label>
+      </div>
+      <label>Spitznamen im Kickertool (mit Komma getrennt)<input type="text" name="nicknames" value="{{ nick | join(', ') }}" placeholder="z. B. Toni, Tonito"></label>
+      <button class="btn btn-primary">Speichern</button>
+    </form>
+    {% else %}
+    <section class="card">
+      <h3>Steckbrief</h3>
+      <ul class="facts">
+        {% if m.birthday %}<li><span>🎂 Geburtstag</span><b>{{ m.birthday[8:10] }}.{{ m.birthday[5:7] }}.</b></li>{% endif %}
+        {% if m.position %}<li><span>⚽ Lieblingsposition</span><b>{{ positions[m.position] }}</b></li>{% endif %}
+        {% if nick %}<li><span>Spitznamen</span><b>{{ nick | join(', ') }}</b></li>{% endif %}
+        {% if m.joined %}<li><span>Beitrag seit</span><b>{{ m.joined | ym_de }}</b></li>{% endif %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-head"><h3>⚽ Am Kicker</h3><a href="{{ url_for('kicker.spieler', mid=m.id) }}">Ganze Statistik</a></div>
+      {% if k %}
+      <ul class="facts">
+        <li><span>Spiele · Siegquote</span><b>{{ k.games }} · {{ k.win_pct }} %</b></li>
+        <li><span>Tore</span><b>{{ k.gf }}:{{ k.ga }}</b></li>
+        {% if partner %}<li><span>🤝 Traumpartner</span><b>{{ partner }} · {{ k.best_partner.pct }} % Siege</b></li>{% endif %}
+        <li><span>Form</span><b><span class="formdots big">{% for f in k.form %}<i class="f-{{ f }}"></i>{% endfor %}</span></b></li>
+      </ul>
+      {% else %}<p class="muted">Noch keine Spiele in der Statistik.</p>{% endif %}
+    </section>
+  </div>
+
+  <div>
+    {% if own or can('admin') %}
+    <section class="card">
+      <h3>🔐 Account <small class="muted">– Anmeldung</small></h3>
+      <ul class="facts">
+        <li><span>Login-E-Mail</span><b>{{ m.email or '– keine –' }}</b></li>
+        <li><span>Status</span><b>{{ {'aktiv':'Aktiv','ehren':'Ehrenmitglied','ehemalig':'Ehemalig'}[m.status] }}</b></li>
+      </ul>
+      {% if own %}<p class="hint">Die Login-Adresse ändert der Admin – sie muss zusätzlich in Cloudflare freigeschaltet werden, sonst kommst du nicht mehr rein.</p>{% endif %}
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <h3>🛡️ Rollen & Rechte</h3>
+      <ul class="rights">
+        {% for label, ok in rights %}<li class="{{ 'yes' if ok else 'no' }}"><span>{{ '✓' if ok else '–' }}</span>{{ label }}</li>{% endfor %}
+      </ul>
+      <p class="hint">Rollen vergibt der Admin. Mehrere Rollen gleichzeitig sind möglich.</p>
+    </section>
+
+    {% if acc %}
+    <section class="card account-card {{ 'is-debt' if acc.open > 0 else 'is-ok' }}">
+      <div class="card-head"><h3>💶 Konto</h3><a href="{{ url_for('main.kasse_mitglied', mid=m.id) }}">Details</a></div>
+      <p class="money">{% if acc.open < 0 %}{{ (-acc.open) | euro }} Guthaben{% else %}{{ acc.open | euro }}{% if acc.open > 0 %} offen{% endif %}{% endif %}</p>
+    </section>
+    {% endif %}
+
+    {% if own %}
+    <section class="card">
+      <h3>⚙️ Einstellungen</h3>
+      <ul class="settings-links">
+        <li><a href="{{ url_for('main.benachrichtigungen') }}">🔔 Benachrichtigungen <small class="muted">{{ 'Push' if not pref or pref.push_on }}{{ ' + Mail' if pref and pref.email_on }}</small></a></li>
+        <li><a href="{{ url_for('main.kalender') }}">📅 Kalender abonnieren</a></li>
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

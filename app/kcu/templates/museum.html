@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Merch-Museum{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Merch-Museum</h1>
+    <p class="muted">Alles, was der KCU je hergestellt hat – seit {{ settings.founded or '2017' }}. {{ total }} Stück{{ 'e' if total != 1 }}.</p>
+  </div>
+  {% if can('redaktion') %}<a class="btn btn-primary" href="{{ url_for('main.museum_form') }}">+ Neues Stück</a>{% endif %}
+</div>
+
+{% if categories %}
+<div class="filter-chips">
+  <a href="{{ url_for('main.museum') }}" class="{{ 'on' if not current }}">Alle</a>
+  {% for c in categories %}<a href="{{ url_for('main.museum', k=c) }}" class="{{ 'on' if current == c }}">{{ c }}</a>{% endfor %}
+</div>
+{% endif %}
+
+{% if by_year %}
+<div class="timeline">
+  {% for year, items in by_year.items() %}
+  <section class="tl-year">
+    <h2 class="tl-label">{{ year }}</h2>
+    <div class="exhibits">
+      {% for it in items %}
+      <a class="exhibit {{ 'is-gone' if it.status == 'weg' }}" href="{{ url_for('main.museum_item', iid=it.id) }}">
+        <span class="exhibit-img">
+          {% if it.cover %}<img loading="lazy" src="{{ url_for('main.files', name=it.cover) }}" alt="">{% else %}<span class="exhibit-empty">👕</span>{% endif %}
+          <span class="status status-{{ it.status }}">{{ merch_status_label(it.status) }}</span>
+        </span>
+        <span class="exhibit-text"><b>{{ it.name }}</b><small>{{ it.category or '—' }}</small></span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty">
+  <p class="big-emoji">🏆</p>
+  <p>Das Museum ist noch leer.</p>
+  {% if can('redaktion') %}<a class="btn btn-primary" href="{{ url_for('main.museum_form') }}">Erstes Stück hinzufügen</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

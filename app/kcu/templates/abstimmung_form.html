@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Neue Abstimmung{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.abstimmungen') }}">← Abstimmungen</a>
+<h1 class="page-title">Neue Abstimmung</h1>
+
+<div class="chips presets">
+  <span class="muted small">Vorlage:</span>
+  <a class="chip {{ 'on' if preset == 'janein' }}" href="{{ url_for('main.abstimmung_form', vorlage='janein', termin=pre_event) }}">Ja / Nein</a>
+  <a class="chip {{ 'on' if preset == 'verschieben' }}" href="{{ url_for('main.abstimmung_form', vorlage='verschieben', termin=pre_event) }}">Termin verschieben?</a>
+  <a class="chip {{ 'on' if preset == 'termin' }}" href="{{ url_for('main.abstimmung_form', vorlage='termin', termin=pre_event) }}">Terminfindung</a>
+  <a class="chip {{ 'on' if preset == 'fahrt' }}" href="{{ url_for('main.abstimmung_form', vorlage='fahrt', termin=pre_event) }}">Mannschaftsfahrt</a>
+</div>
+
+{% set ev = (events | selectattr('id', 'equalto', pre_event) | first) if pre_event else None %}
+{% if preset == 'verschieben' %}
+  {% set t = 'Sitzung' ~ (' am ' ~ (ev.date | date_de) if ev else '') ~ ' verschieben?' %}{% set opts = ['Ja, verschieben', 'Nein, bleibt so', 'Egal'] %}{% set k = 'single' %}
+{% elif preset == 'janein' %}
+  {% set t = '' %}{% set opts = ['Ja', 'Nein', 'Enthaltung'] %}{% set k = 'single' %}
+{% elif preset == 'termin' %}
+  {% set t = 'Wann passt es euch?' %}{% set opts = ['', '', ''] %}{% set k = 'multi' %}
+{% elif preset == 'fahrt' %}
+  {% set t = 'Wann machen wir die Mannschaftsfahrt?' %}{% set opts = ['', '', ''] %}{% set k = 'multi' %}
+{% else %}
+  {% set t = '' %}{% set opts = ['', ''] %}{% set k = 'single' %}
+{% endif %}
+{% set date_mode = preset in ('termin', 'fahrt') %}
+
+<form class="card form" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <label>Frage<input type="text" name="title" value="{{ t }}" required maxlength="150" placeholder="z. B. Neues Stammbier?"></label>
+  <label>Beschreibung (optional, Markdown)<textarea name="description" rows="2"></textarea></label>
+
+  <fieldset class="options-edit" data-options>
+    <legend>Antworten {% if date_mode %}<span class="muted small">– Datum wählen oder Text eintippen</span>{% endif %}</legend>
+    {% for o in opts %}
+    <div class="opt-row">
+      {% if date_mode %}<input type="date" class="opt-date" aria-label="Datum übernehmen">{% endif %}
+      <input type="text" name="options" value="{{ o }}" maxlength="120" placeholder="Antwort {{ loop.index }}">
+    </div>
+    {% endfor %}
+    <button type="button" class="btn btn-small" data-add-option>+ weitere Antwort</button>
+  </fieldset>
+
+  <div class="row">
+    <label>Auswahl
+      <select name="kind">
+        <option value="single" {{ 'selected' if k == 'single' }}>Eine Antwort</option>
+        <option value="multi" {{ 'selected' if k == 'multi' }}>Mehrere möglich (z. B. Termine)</option>
+      </select>
+    </label>
+    <label>Ergebnis zeigen
+      <select name="show_results">
+        <option value="nach_abstimmung">nach eigener Stimme</option>
+        <option value="sofort">sofort für alle</option>
+        <option value="nach_ende">erst nach Ende</option>
+      </select>
+    </label>
+    <label>Endet am (optional)<input type="datetime-local" name="closes_at"></label>
+  </div>
+  <div class="row">
+    <label>Zu Termin (optional)
+      <select name="event_id">
+        <option value="">– keiner –</option>
+        {% for e in events %}<option value="{{ e.id }}" {{ 'selected' if e.id == pre_event }}>{{ e.date | date_de }} · {{ e.title }}</option>{% endfor %}
+      </select>
+    </label>
+    {% if can('vorstand') %}
+    <label>Wer stimmt ab?
+      <select name="audience">
+        <option value="alle">Alle Mitglieder</option>
+        <option value="vorstand">Nur Vorstand (privat)</option>
+      </select>
+    </label>
+    {% endif %}
+  </div>
+  <label class="check"><input type="checkbox" name="anonymous" value="1"> Anonym (niemand sieht, wer wofür gestimmt hat)</label>
+  <button class="btn btn-primary">Abstimmung starten</button>
+</form>
+{% endblock %}

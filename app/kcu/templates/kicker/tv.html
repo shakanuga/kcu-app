@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t.name }} · TV</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
+<body class="tv-body">
+  <div id="tv" data-src="{{ url_for('kicker.tv', tid=t.id, partial=1) }}" data-status="{{ url_for('kicker.status_json', tid=t.id) }}">
+    {% include "kicker/_tv_inner.html" %}
+  </div>
+  <button class="tv-fs" type="button" data-fullscreen title="Vollbild">⛶</button>
+  <script src="{{ url_for('static', filename='app.js') }}?v={{ version }}"></script>
+</body>
+</html>

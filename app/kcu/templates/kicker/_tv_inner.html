@@ -1,0 +1,47 @@
+{% from "kicker/_macros.html" import team, bracket_view %}
+<header class="tv-head">
+  <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="tv-logo">
+  <div>
+    <div class="tv-title">{{ t.name }}</div>
+    <div class="tv-sub">{{ mode_label(o.mode) }} · bis {{ o.ziel }}{% if o.mode not in ('ko','doko') %} · Runde {{ round_no }}{% endif %} · {{ n_done }}/{{ n_total }} Spiele</div>
+  </div>
+</header>
+<main class="tv-grid {{ 'tv-grid-bracket' if bracket }}">
+  <section class="tv-now">
+    {% if current %}
+      <div class="tv-label">Jetzt am Tisch · {{ current.round_label }}</div>
+      <div class="tv-match">
+        <div class="tv-team blue">{% for n in current.t1 %}<span>{{ res.label(n) }}</span>{% endfor %}</div>
+        <div class="tv-vs">VS</div>
+        <div class="tv-team red">{% for n in current.t2 %}<span>{{ res.label(n) }}</span>{% endfor %}</div>
+      </div>
+      {% if upcoming %}
+      <div class="tv-label small">Als Nächstes</div>
+      <ul class="tv-next">
+        {% for m in upcoming[:3] %}<li><small>{{ m.round_label }}</small><span>{{ team(m.t1, res) }}</span><i>vs</i><span>{{ team(m.t2, res) }}</span></li>{% endfor %}
+      </ul>
+      {% endif %}
+    {% elif winner or t.status == 'fertig' %}
+      <div class="tv-label">Sieger</div>
+      <div class="tv-winner">🏆<br>{% for n in (winner.members if winner else []) %}{{ res.label(n) }}{{ ' & ' if not loop.last }}{% endfor %}</div>
+    {% else %}
+      <div class="tv-label">Runde fertig</div>
+      <div class="tv-wait">Nächste Runde wird ausgelost …</div>
+    {% endif %}
+    {% if done %}
+    <div class="tv-label small">Zuletzt</div>
+    <ul class="tv-last">
+      {% for m in done[:3] %}<li><span class="{{ 'w' if m.score1 > m.score2 }}">{{ team(m.t1, res) }}</span><b>{{ m.score1 }}:{{ m.score2 }}</b><span class="{{ 'w' if m.score2 > m.score1 }}">{{ team(m.t2, res) }}</span></li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  <section class="tv-table">
+    {% if bracket %}
+    <div class="tv-label">Turnierbaum</div>
+    {{ bracket_view(tv_bracket, res, current.id if current else None) }}
+    {% else %}
+    <div class="tv-label">Tabelle</div>
+    {% include "kicker/_table.html" %}
+    {% endif %}
+  </section>
+</main>

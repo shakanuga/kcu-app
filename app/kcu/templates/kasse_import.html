@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Kasse importieren{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.kasse') }}">← Kasse</a>
+<h1 class="page-title">Zahlungen & Strafen importieren</h1>
+
+{% if not rows %}
+<div class="grid-2 wide-left">
+  <form class="card form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="preview">
+    <label>CSV-Datei (z. B. aus Excel „Speichern unter → CSV“)<input type="file" name="file" accept=".csv,.txt,text/csv"></label>
+    <label>… oder hier einfügen<textarea name="raw" rows="8" placeholder="typ;datum;name;betrag;text&#10;zahlung;13.02.2026;Kalle;12;PayPal&#10;strafe;15.01.2026;Kalle;2;Ball im Kicker">{{ raw }}</textarea></label>
+    <button class="btn btn-primary">Vorschau anzeigen</button>
+  </form>
+  <section class="card hint-card">
+    <b>Format</b>
+    <p>Eine Zeile pro Buchung, getrennt mit Semikolon oder Komma:</p>
+    <p><code>typ;datum;name;betrag;text;monat</code></p>
+    <ul>
+      <li><b>typ</b>: zahlung, strafe, einnahme oder ausgabe</li>
+      <li><b>datum</b>: 13.02.2026 oder 2026-02-13</li>
+      <li><b>name</b>: Rufname oder Spitzname (z. B. Kalle oder Kalli) – bei einnahme/ausgabe leer</li>
+      <li><b>betrag</b>: 10 oder 10,50</li>
+      <li><b>text</b>: Notiz bzw. Name der Strafe (PayPal/bar im Text wird als Zahlungsart erkannt)</li>
+      <li><b>monat</b> (optional, nur Zahlungen): für welchen Monat, z. B. 2026-07 oder Juli 2026 – dann wird die Zahlung genau diesem Monat zugeordnet, wie auf der Papierliste</li>
+    </ul>
+    <p>Vor dem Import wird automatisch eine Sicherung angelegt.</p>
+  </section>
+</div>
+{% else %}
+<form method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="step" value="import">
+  <textarea name="raw" hidden>{{ raw }}</textarea>
+  <div class="kpis">
+    <div class="kpi"><span>Zahlungen</span><b>{{ total.zahlung | euro }}</b></div>
+    <div class="kpi"><span>Strafen</span><b>{{ total.strafe | euro }}</b></div>
+    <div class="kpi"><span>Einnahmen</span><b>{{ total.einnahme | euro }}</b></div>
+    <div class="kpi"><span>Ausgaben</span><b>{{ total.ausgabe | euro }}</b></div>
+  </div>
+  {% if start_hint %}
+  <div class="card warn-card">
+    <b>⚠ Die Kasse rechnet bisher erst ab {{ settings.kasse_start | ym_de }}.</b>
+    <p>Die Liste beginnt aber schon im {{ start_hint | ym_de }}. Ohne Anpassung zählen die Zahlungen davor als Guthaben, weil für diese Monate keine Beiträge berechnet werden.</p>
+    <label class="check"><input type="checkbox" name="set_start" value="{{ start_hint }}" checked> Kasse ab {{ start_hint | ym_de }} rechnen lassen</label>
+  </div>
+  {% endif %}
+  {% if errors %}<div class="flash error">{{ errors | length }} Zeile(n) mit Fehlern – bitte korrigieren und neu hochladen.</div>{% endif %}
+  <section class="card table-card">
+    <div class="table-wrap">
+    <table class="tbl compact">
+      <thead><tr><th>Zeile</th><th>Typ</th><th>Datum</th><th>Mitglied</th><th class="r">Betrag</th><th>für Monat</th><th>Text</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="{{ 'row-error' if r.errors }}">
+          <td class="muted">{{ r.line }}</td><td>{{ r.typ or '?' }}</td><td>{{ r.date | date_de if r.date else '?' }}</td>
+          <td>{{ r.member }}{% if r.member_id and r.member != r.name %} <small class="muted">({{ r.name }})</small>{% endif %}</td>
+          <td class="r">{{ r.amount | euro if r.amount else '?' }}</td><td>{{ r.period | ym_de if r.period else '' }}</td><td>{{ r.text }}</td>
+          <td class="red small">{{ r.errors | join(', ') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('main.kasse_import') }}">Zurück</a>
+    {% if not errors %}<button class="btn btn-primary">{{ rows | length }} Buchungen importieren</button>{% endif %}
+  </div>
+</form>
+{% endif %}
+{% endblock %}

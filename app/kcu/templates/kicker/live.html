@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% from "kicker/_macros.html" import team, match_row, bracket_view %}
+{% block title %}{{ t.name }} · live{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="card-kicker"><span class="live-dot"></span> Läuft · {{ mode_label(o.mode) }}{% if o.entry == 'team' and o.mode not in ('monster_dyp','whist','lms') %} · Teams{% endif %} · bis {{ o.ziel }} Tore{% if o.mode == 'lms' %} · {{ o.lives }} Leben{% endif %}</p>
+    <h1 class="page-title">{{ t.name }}</h1>
+    <p class="muted small">{% if o.mode not in ('ko','doko') %}Runde {{ round_no }}{% if o.rounds_planned %} von {{ o.rounds_planned }}{% endif %} · {% endif %}{{ n_done }} von {{ n_total }} Spielen fertig</p>
+    <div class="progress"><i style="width: {{ (100 * n_done / n_total) | round | int if n_total else 0 }}%"></i></div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-primary" href="{{ url_for('kicker.tv', tid=t.id) }}" target="_blank" rel="noopener">📺 TV-Ansicht</a>
+  </div>
+</div>
+
+<div class="grid-2 wide-left">
+  <div>
+    {% if current %}
+    <section class="card score-card">
+      <p class="card-kicker">Jetzt am Tisch · {{ current.round_label }}</p>
+      <form method="post" action="{{ url_for('kicker.ergebnis', tid=t.id, mid=current.id) }}" class="score-form" data-score-form data-ziel="{{ o.ziel }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <div class="score-side">
+          <div class="score-names">{{ team(current.t1, res) }}</div>
+          <div class="stepper"><button type="button" data-step="-1">−</button><input type="number" name="score1" min="0" max="99" inputmode="numeric" value="" placeholder="0" required><button type="button" data-step="1">+</button></div>
+          <button type="button" class="btn btn-small btn-ghost" data-win>Sieg {{ o.ziel }}</button>
+        </div>
+        <div class="score-vs">VS</div>
+        <div class="score-side">
+          <div class="score-names">{{ team(current.t2, res) }}</div>
+          <div class="stepper"><button type="button" data-step="-1">−</button><input type="number" name="score2" min="0" max="99" inputmode="numeric" value="" placeholder="0" required><button type="button" data-step="1">+</button></div>
+          <button type="button" class="btn btn-small btn-ghost" data-win>Sieg {{ o.ziel }}</button>
+        </div>
+        <button class="btn btn-primary btn-wide">Ergebnis speichern</button>
+      </form>
+    </section>
+    {% elif winner %}
+    <section class="card score-card winner-card">
+      <p class="card-kicker">Turnier entschieden</p>
+      <h2 class="page-title">🏆 {{ winner.label }}</h2>
+    </section>
+    {% else %}
+    <section class="card">
+      <p>Alle Spiele dieser Runde sind gespielt.</p>
+      <form method="post" action="{{ url_for('kicker.aktion', tid=t.id) }}" class="actions">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        {% if o.mode in ('monster_dyp', 'whist', 'lms', 'swiss') %}<button class="btn btn-primary" name="a" value="runde">Nächste Runde auslosen</button>{% endif %}
+        <button class="btn" name="a" value="beenden">Turnier beenden</button>
+      </form>
+    </section>
+    {% endif %}
+
+    {% if upcoming %}
+    <section class="card">
+      <h3>Danach</h3>
+      <div class="mlist">{% for m in upcoming %}<div class="mline"><small class="muted">{{ m.round_label }}</small>{{ match_row(m, res) }}</div>{% endfor %}</div>
+    </section>
+    {% endif %}
+
+    {% if bracket %}
+    <section class="card bracket-card">
+      <h3>Turnierbaum</h3>
+      {{ bracket_view(bracket, res, current.id if current else None) }}
+    </section>
+    {% endif %}
+
+    {% if done %}
+    <section class="card">
+      <h3>Gespielt</h3>
+      <div class="mlist">
+        {% for m in done %}
+        <div class="mline done-line">
+          <small class="muted">{{ m.round_label }}</small>
+          {{ match_row(m, res) }}
+          <span class="line-actions">
+            {% set losers = m.t2 if m.score1 > m.score2 else m.t1 %}
+            {% if cat_kasten and m.score1 != m.score2 and (m.score1 == 0 or m.score2 == 0) and (m.score1 >= o.ziel or m.score2 >= o.ziel) %}
+            <form method="post" action="{{ url_for('main.strafen') }}" data-confirm="{{ cat_kasten.title }} ({{ cat_kasten.natural }}) für {{ team(losers, res) }} eintragen?">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="catalog_id" value="{{ cat_kasten.id }}">
+              {% for n in losers %}{% set mid = res.member_id(n) %}{% if mid %}<input type="hidden" name="member_ids" value="{{ mid }}">{% endif %}{% endfor %}
+              <input type="hidden" name="note" value="{{ t.name }}, {{ m.round_label }}">
+              <input type="hidden" name="next" value="{{ url_for('kicker.live', tid=t.id) }}">
+              <button class="linkbtn red">🍺 Kasten-Strafe</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('kicker.ergebnis', tid=t.id, mid=m.id) }}" data-confirm="Ergebnis zurücksetzen und neu eintragen?">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <button class="linkbtn" name="reset" value="1">korrigieren</button>
+            </form>
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  <div>
+    <section class="card">
+      <h3>Tabelle</h3>
+      {% include "kicker/_table.html" %}
+    </section>
+    {% if cat_ball %}
+    <section class="card">
+      <h3>Schnellstrafe</h3>
+      <form class="form qs-form" method="post" action="{{ url_for('main.strafen') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ url_for('kicker.live', tid=t.id) }}">
+        <select name="catalog_id">
+          {% for c in [cat_ball] %}<option value="{{ c.id }}">{{ c.title }} ({{ c.amount | euro }})</option>{% endfor %}
+        </select>
+        <div class="chips">
+          {% for p in parts %}{% set mid = res.member_id(p.name) %}{% if mid %}
+          <label class="chip"><input type="checkbox" name="member_ids" value="{{ mid }}"><span>{{ res.label(p.name) }}</span></label>
+          {% endif %}{% endfor %}
+        </div>
+        <input type="hidden" name="note" value="{{ t.name }}">
+        <button class="btn btn-small">Eintragen</button>
+      </form>
+    </section>
+    {% endif %}
+    <form method="post" action="{{ url_for('kicker.aktion', tid=t.id) }}" class="card actions control-strip">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      {% if o.mode in ('monster_dyp', 'whist') and current %}<button class="btn btn-small" name="a" value="offene_loeschen" data-confirm-btn="Offene Spiele der Runde verwerfen?">Runde verwerfen</button>{% endif %}
+      <button class="btn btn-small" name="a" value="beenden" data-confirm-btn="Turnier jetzt beenden? Offene Spiele werden verworfen.">Turnier beenden</button>
+      <button class="btn btn-small btn-danger" name="a" value="loeschen" data-confirm-btn="Turnier komplett löschen?">Löschen</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

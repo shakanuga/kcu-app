@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Protokolle importieren{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.protokolle') }}">← Protokolle</a>
+<h1 class="page-title">Alte Protokolle importieren</h1>
+<div class="grid-2 wide-left">
+  <form class="card form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label>PDF-Dateien (beliebig viele auf einmal)<input type="file" name="files" accept="application/pdf,.pdf" multiple required></label>
+    <button class="btn btn-primary">Importieren</button>
+    <p class="hint">Jede Datei wird ein eigenes Protokoll. Das Datum liest die App aus dem Dateinamen (z. B. <code>Protokoll 14.09.2024.pdf</code>, <code>2024-09-14.pdf</code>, <code>Oktober 2024.pdf</code>) oder aus dem Text auf der ersten Seite. Dateien, die schon importiert sind (gleicher Dateiname), werden übersprungen.</p>
+  </form>
+  {% if results %}
+  <section class="card">
+    <h3>Ergebnis</h3>
+    <ul class="import-results">
+      {% for r in results %}
+      <li class="st-{{ 'neu' if r.state == 'neu' else 'fehler' if r.state == 'fehler' else 'übersprungen' }}">
+        <span class="ir-state">{{ {'neu':'✓ neu','vorhanden':'= vorhanden','fehler':'✕ Fehler'}[r.state] }}</span>
+        <span>{% if r.pid %}<a href="{{ url_for('main.protokoll', pid=r.pid) }}">{{ r.title }}</a>
+          <small class="muted">· {{ r.file }} · {% if r.how %}Datum aus {{ r.how }}{% else %}<span class="red">kein Datum gefunden – bitte <a href="{{ url_for('main.protokoll_form', pid=r.pid) }}">nachtragen</a></span>{% endif %}</small>
+          {% else %}{{ r.file }}{% if r.msg %} – {{ r.msg }}{% endif %}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

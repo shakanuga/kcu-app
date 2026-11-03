@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Strafen{% endblock %}
+{% block content %}
+<h1 class="page-title">Strafen</h1>
+
+<form class="card penalty-form" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+  <p class="step"><span>1</span> Was ist passiert?</p>
+  {% set ns = namespace(kind='') %}
+  <div class="choices">
+    {% for c in catalog %}
+      {% if c.kind != ns.kind %}
+        {% set ns.kind = c.kind %}
+        <p class="choice-group">{{ 'Schnellstrafen · nur im Modus' if c.kind == 'schnell' else 'Strafen' }}</p>
+      {% endif %}
+      <label class="choice">
+        <input type="radio" name="catalog_id" value="{{ c.id }}" required>
+        <span class="choice-body">
+          <span class="choice-title">{{ c.title }}</span>
+          {% if c.description %}<span class="choice-desc">{{ c.description }}</span>{% endif %}
+        </span>
+        <span class="choice-amt {{ 'is-natural' if c.natural }}">{% if c.natural %}{{ c.natural }}{% else %}{{ c.amount | euro }}{% endif %}</span>
+      </label>
+    {% endfor %}
+  </div>
+
+  <p class="step"><span>2</span> Wer war's? <small>(mehrere möglich)</small></p>
+  <div class="chips" data-chips>
+    {% for m in members %}
+      <label class="chip">
+        <input type="checkbox" name="member_ids" value="{{ m.id }}">
+        <span>{% if m.number %}<i>{{ m.number }}</i>{% endif %}{{ m.short or m.name }}</span>
+      </label>
+    {% endfor %}
+    <button type="button" class="chip chip-all" data-chips-all>Alle</button>
+  </div>
+
+  <p class="step"><span>3</span> Wann &amp; Notiz</p>
+  <div class="row">
+    <input type="date" name="date" value="{{ today }}" required>
+    <input type="text" name="note" placeholder="Notiz (optional), z. B. „Spiel 3“" maxlength="300">
+  </div>
+
+  <button class="btn btn-primary btn-wide" type="submit">Strafe eintragen</button>
+</form>
+
+<div class="grid-2 wide-left">
+  <section class="card">
+    <div class="card-head">
+      <h3>Strafenbuch</h3>
+      <form method="get" class="inline-filter">
+        <select name="m" onchange="this.form.submit()">
+          <option value="">Alle Mitglieder</option>
+          {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if member_filter == m.id }}>{{ m.short or m.name }}</option>{% endfor %}
+        </select>
+      </form>
+    </div>
+    {% if rows %}
+    <ul class="ledger-list">
+      {% for p in rows %}
+      <li>
+        <div class="ll-main">
+          <b>{{ p.short or p.name }}</b> · {{ p.title }}
+          {% if p.kind == 'schnell' %}<span class="tag tag-blue">Schnell</span>{% endif %}
+          <div class="ll-meta">{{ p.date | date_de }} · eingetragen von {{ p.created_by }}{% if p.note %} · „{{ p.note }}“{% endif %}</div>
+        </div>
+        <div class="ll-amt">{% if p.natural %}{{ p.natural }}{% else %}{{ p.amount | euro }}{% endif %}</div>
+        {% if may_delete_penalty(p) %}
+        <form method="post" action="{{ url_for('main.strafe_loeschen', pid=p.id) }}" data-confirm="Diese Strafe wirklich löschen?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="icon-btn" title="Löschen">✕</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Noch nichts eingetragen.</p>{% endif %}
+  </section>
+
+  <section class="card sinners">
+    <h3>Sünderkartei {{ year }}</h3>
+    {% if sinners %}
+    <ol>
+      {% for s in sinners %}
+      <li><span class="s-rank">{{ loop.index }}</span><span class="s-name">{{ s.short or s.name }}</span><span class="s-sum">{{ s.s | euro }}<small>{{ s.c }}×</small></span></li>
+      {% endfor %}
+    </ol>
+    {% else %}<p class="muted">Alle unschuldig. Noch.</p>{% endif %}
+    <p class="hint">Eigene Einträge kannst du 30 Minuten lang wieder löschen. Danach nur der Kassenwart.</p>
+  </section>
+</div>
+{% endblock %}

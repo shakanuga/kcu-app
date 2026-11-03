@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Kicker{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="card-kicker">{{ discipline_label(disc) }}{% if year %} · {{ year }}{% else %} · ewige Tabelle{% endif %}</p>
+    <h1 class="page-title">Kicker-Statistik</h1>
+  </div>
+  <div class="actions">
+    {% if settings.kickertool_url %}<a class="btn" href="{{ settings.kickertool_url }}" target="_blank" rel="noopener">Kickertool öffnen ↗</a>{% endif %}
+    {% if user.id or can('kicker_verwalten') %}<a class="btn btn-primary" href="{{ url_for('kicker.neu') }}">+ Turnier starten</a>{% endif %}
+  </div>
+</div>
+
+{% for t in live %}
+<a class="reminder live-banner" href="{{ url_for('kicker.live', tid=t.id) }}">
+  <span class="rem-ico">🔴</span><span><b>Läuft gerade:</b> {{ t.name }} · {{ mode_label(t.mode) }}</span><span class="cta-arrow">→</span>
+</a>
+{% endfor %}
+
+<div class="chips static filter-chips">
+  {% for d, l in [('kicker','Kicker'), ('bierpong','Bierpong'), ('flunky','Flunkyball')] %}
+  <a class="fchip {{ 'on' if disc == d }}" href="{{ url_for('kicker.index', d=d, jahr=year or None, alle='1' if alle else None) }}">{{ l }}</a>
+  {% endfor %}
+  <span class="fsep"></span>
+  <a class="fchip {{ 'on' if not year }}" href="{{ url_for('kicker.index', d=disc, alle='1' if alle else None) }}">Alle Jahre</a>
+  {% for y in years %}<a class="fchip {{ 'on' if year == y }}" href="{{ url_for('kicker.index', d=disc, jahr=y, alle='1' if alle else None) }}">{{ y }}</a>{% endfor %}
+  <span class="fsep"></span>
+  <a class="fchip {{ 'on' if not alle }}" href="{{ url_for('kicker.index', d=disc, jahr=year or None) }}" title="Pro Spielabend zählt nur der erste Modus">🏅 Wertung</a>
+  <a class="fchip {{ 'on' if alle }}" href="{{ url_for('kicker.index', d=disc, jahr=year or None, alle='1') }}" title="Auch die Spaß-Runden danach">🎉 inkl. Spaß-Modi</a>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><span>Turniere</span><b>{{ n_tournaments }}</b></div>
+  <div class="kpi"><span>Spiele</span><b>{{ n_matches }}</b></div>
+  <div class="kpi"><span>Tore</span><b>{{ total_goals }}</b></div>
+  <div class="kpi"><span>Sterne vergeben</span><b>★ {{ board | sum(attribute='p.stars') }}</b></div>
+</div>
+
+{% if not n_matches %}
+<div class="card empty">
+  <p class="big-emoji">⚽</p>
+  <p>Noch keine Spiele {{ 'in diesem Jahr' if year else 'erfasst' }}.</p>
+  {% if can('kicker_verwalten') %}<a class="btn btn-primary" href="{{ url_for('kicker.importieren') }}">Kickertool-Turniere importieren</a>{% endif %}
+</div>
+{% else %}
+<section class="card table-card">
+  <div class="card-head">
+    <h3>Rangliste</h3>
+    <span class="small muted">★ = gewonnenes Spiel · Quote ab {{ min_games }} Spielen · {{ 'alle Modi' if alle else 'nur der erste Modus jedes Spielabends' }}</span>
+  </div>
+  <div class="seg sortseg">
+    {% for k, l in [('stars','★ Sterne'), ('pct','Siegquote'), ('titel','Turniersiege'), ('tore','Tordifferenz'), ('spiele','Spiele')] %}
+    <a class="{{ 'on' if sort == k }}" href="{{ url_for('kicker.index', d=disc, jahr=year or None, sort=k, alle='1' if alle else None) }}">{{ l }}</a>
+    {% endfor %}
+  </div>
+  <div class="table-wrap">
+  <table class="tbl leaderboard">
+    <thead><tr><th>#</th><th>Spieler</th><th class="r">★</th><th class="r">Spiele</th><th class="r hide-s">S–N</th><th class="r">Quote</th><th class="r hide-s">Tore</th><th class="r hide-s">Diff</th><th class="r">🏆</th><th class="hide-s">Form</th></tr></thead>
+    <tbody>
+    {% for r in board %}
+      <tr class="{{ 'top3' if loop.index <= 3 }}">
+        <td class="rank">{{ loop.index }}</td>
+        <td><a href="{{ url_for('kicker.spieler', mid=r.m.id, jahr=year or None) }}"><b>{{ r.m.short or r.m.name }}</b></a>{% if r.m.number %} <span class="muted small">#{{ r.m.number }}</span>{% endif %}</td>
+        <td class="r stars">{{ r.p.stars }}</td>
+        <td class="r">{{ r.p.games }}</td>
+        <td class="r hide-s">{{ r.p.wins }}–{{ r.p.losses }}</td>
+        <td class="r"><span class="pct {{ 'muted' if r.p.games < min_games }}">{{ r.p.win_pct }} %</span></td>
+        <td class="r hide-s">{{ r.p.gf }}:{{ r.p.ga }}</td>
+        <td class="r hide-s {{ 'pos' if r.p.goal_diff > 0 else 'neg' if r.p.goal_diff < 0 }}">{{ '%+d' % r.p.goal_diff }}</td>
+        <td class="r">{% if r.gold %}<b>{{ r.gold }}</b>{% else %}<span class="muted">–</span>{% endif %}</td>
+        <td class="hide-s"><span class="formdots">{% for f in r.p.form %}<i class="f-{{ f }}"></i>{% endfor %}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="hint">Gäste zählen nicht in die Rangliste, Spitznamen aus dem Kickertool werden automatisch dem Mitglied zugeordnet. {% if not alle %}In die Wertung kommt pro Spielabend nur der erste Modus – die Runden danach sind zum Spaß (auf der Turnierseite änderbar).{% endif %}</p>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <h3>Rekorde & Fakten</h3>
+    {% set by_shut = board | sort(attribute='p.kasten_losses', reverse=true) | first %}
+    {% set by_shutw = board | sort(attribute='p.shutout_wins', reverse=true) | first %}
+    {% set by_streak = board | sort(attribute='p.best_streak', reverse=true) | first %}
+    {% set by_gf = board | selectattr('p.games', 'ge', min_games) | sort(attribute='p.gf_avg', reverse=true) | first %}
+    {% set by_ga = board | selectattr('p.games', 'ge', min_games) | sort(attribute='p.ga_avg') | first %}
+    <ul class="facts">
+      {% if by_streak %}<li><span>🔥 Längste Siegesserie</span><b>{{ by_streak.m.short }} · {{ by_streak.p.best_streak }} in Folge</b></li>{% endif %}
+      {% if by_shutw and by_shutw.p.shutout_wins %}<li><span>🧱 Meiste Zu-Null-Siege</span><b>{{ by_shutw.m.short }} · {{ by_shutw.p.shutout_wins }}×</b></li>{% endif %}
+      {% if by_shut and by_shut.p.kasten_losses %}<li><span>🍺 Meiste 10:0-Pleiten (Kasten!)</span><b>{{ by_shut.m.short }} · {{ by_shut.p.kasten_losses }}×</b></li>{% endif %}
+      {% if by_gf %}<li><span>⚽ Torfabrik (Tore pro Spiel)</span><b>{{ by_gf.m.short }} · {{ by_gf.p.gf_avg }}</b></li>{% endif %}
+      {% if by_ga %}<li><span>🧤 Die Mauer (Gegentore pro Spiel)</span><b>{{ by_ga.m.short }} · {{ by_ga.p.ga_avg }}</b></li>{% endif %}
+      {% if records.biggest %}{% set bm = records.biggest %}<li><span>💥 Höchster Sieg</span><b>{{ bm.score }} · {% for n in bm.win %}{{ res.label(n) }}{{ ' & ' if not loop.last }}{% endfor %} gegen {% for n in bm.lose %}{{ res.label(n) }}{{ ' & ' if not loop.last }}{% endfor %} <small class="muted">({{ bm.match.t_date | date_de }})</small></b></li>{% endif %}
+    </ul>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h3>Letzte Turniere</h3><a href="{{ url_for('kicker.turniere', d=disc) }}">Alle</a></div>
+    <ul class="events">
+      {% for t in recent %}
+      <li><span class="ev-date">{{ t.date | date_de }}</span><span class="ev-title"><a href="{{ url_for('kicker.turnier', tid=t.id) }}">{{ t.name }}</a>
+        <small class="muted">· {{ mode_label(t.mode) }}{% if not counting.get(t.id, (true,))[0] %} · 🎉 zum Spaß{% endif %}{% if winners.get(t.id) %} · 🏆 {{ winners[t.id] }}{% endif %}</small></span></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endif %}
+
+{% if can('kicker_verwalten') %}
+<section class="card admin-strip">
+  <b>Verwaltung</b>
+  <a class="btn btn-small" href="{{ url_for('kicker.importieren') }}">Turniere importieren</a>
+  <a class="btn btn-small" href="{{ url_for('kicker.namen') }}">Spielernamen zuordnen{% if unknown_count %} <i class="badge">{{ unknown_count }}</i>{% endif %}</a>
+  <a class="btn btn-small" href="{{ url_for('kicker.turniere') }}">Alle Turniere</a>
+</section>
+{% endif %}
+{% endblock %}

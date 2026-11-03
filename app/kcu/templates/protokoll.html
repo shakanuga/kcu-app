@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ p.title }}{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.protokolle') }}">← Protokolle</a>
+<article class="card doc">
+  <p class="card-kicker">{{ p.date | date_de(true) }}</p>
+  <h1 class="page-title">{{ p.title }}</h1>
+  <p class="muted small">Protokoll von {{ p.created_by }}{% if p.updated_at %} · zuletzt bearbeitet {{ p.updated_at[:10] | date_de }}{% endif %}</p>
+  {% if p.file %}
+    <a class="file-pill" href="{{ url_for('main.files', name=p.file) }}?dl=1&amp;fn={{ (p.file_name or 'Protokoll.pdf') | urlencode }}">📎 {{ p.file_name or 'Protokoll.pdf' }} herunterladen</a>
+  {% endif %}
+  {% if p.body %}<div class="prose">{{ p.body | markdown }}</div>{% endif %}
+  {% if p.file and not p.body %}<iframe class="pdf" src="{{ url_for('main.files', name=p.file) }}" title="Protokoll"></iframe>{% endif %}
+  {% if can('redaktion') %}
+  <div class="actions">
+    <a class="btn" href="{{ url_for('main.protokoll_form', pid=p.id) }}">Bearbeiten</a>
+    <form method="post" action="{{ url_for('main.protokoll_loeschen', pid=p.id) }}" data-confirm="Protokoll wirklich löschen?">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn btn-danger">Löschen</button></form>
+  </div>
+  {% endif %}
+</article>
+{% endblock %}

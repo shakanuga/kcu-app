@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111113">
+  <title>Dein KCU-Jahr {{ d.year }}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
+<body class="wrapped-body">
+{% set me = d.me %}
+{% set k = d.k %}
+<div class="wr-progress" data-wr-progress></div>
+<a class="wr-close" href="{{ url_for('main.start') }}" aria-label="Schließen">✕</a>
+<main class="wr" data-wrapped>
+
+  <section class="wr-slide s-red">
+    <img class="wr-logo" src="{{ url_for('static', filename='img/logo.png') }}" alt="">
+    <p class="wr-kicker">Kicker Club United</p>
+    <h1 class="wr-huge">{{ d.year }}</h1>
+    <p class="wr-big">Dein Jahr im KCU, {{ me.short or me.name }}{% if me.number %} <span class="wr-num">#{{ me.number }}</span>{% endif %}.</p>
+    <p class="wr-tap">Tippen oder wischen →</p>
+  </section>
+
+  <section class="wr-slide s-blue">
+    <p class="wr-kicker">Sitzung ist, wo die Sitzung ist</p>
+    {% if d.n_sessions %}
+      <h2 class="wr-huge">{{ d.yes }}</h2>
+      <p class="wr-big">Mal hast du zugesagt.</p>
+      <p>{{ d.n_sessions }} Sitzungen gab es {{ d.year }}{% if d.no %} – {{ d.no }}× warst du verhindert{% endif %}.</p>
+      {% if d.reasons %}<p class="wr-quote">Deine Ausreden: {% for r in d.reasons %}„{{ r }}“{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    {% else %}
+      <h2 class="wr-huge">∞</h2>
+      <p class="wr-big">Sitzungen – gezählt hat sie {{ d.year }} noch niemand.</p>
+      <p>Ab jetzt zählt die App jede Zu- und Absage mit.</p>
+    {% endif %}
+  </section>
+
+  <section class="wr-slide s-dark">
+    <p class="wr-kicker">Die Strafenkasse</p>
+    {% if d.pen_count %}
+      <h2 class="wr-huge">{{ d.pen_sum | euro }}</h2>
+      <p class="wr-big">hast du in {{ d.pen_count }} Strafen gespült.</p>
+      {% if d.pen_top %}<p>Lieblingsvergehen: <b>{{ d.pen_top.title }}</b> ({{ d.pen_top.c }}×)</p>{% endif %}
+      {% if d.naturals %}<p>Dazu {{ d.naturals }} Naturalstrafe{{ 'n' if d.naturals != 1 }} 🍺</p>{% endif %}
+      <p class="wr-rank">Platz {{ d.pen_rank }} der Strafenliste</p>
+    {% else %}
+      <h2 class="wr-huge">0 €</h2>
+      <p class="wr-big">Keine einzige Strafe. Heilig gesprochen. 😇</p>
+    {% endif %}
+    <p class="wr-small">Der ganze Verein: {{ d.pen_total | euro }}{% if d.pen_king %} · Strafenkönig: <b>{{ d.pen_king.short or d.pen_king.name }}</b>{% endif %}</p>
+  </section>
+
+  {% if k %}
+  <section class="wr-slide s-red">
+    <p class="wr-kicker">Am Kicker</p>
+    <h2 class="wr-huge">★ {{ k.stars }}</h2>
+    <p class="wr-big">Sterne – also gewonnene Spiele.</p>
+    <p>{{ k.games }} Spiele · {{ k.win_pct }} % Siegquote · {{ k.gf }}:{{ k.ga }} Tore</p>
+    {% if d.k_rank %}<p class="wr-rank">Platz {{ d.k_rank }} im Sterne-Ranking des Vereins</p>{% endif %}
+    {% if d.k_titles.gold %}<p class="wr-big">🏆 {{ d.k_titles.gold }} Turniersieg{{ 'e' if d.k_titles.gold != 1 }}</p>{% endif %}
+  </section>
+
+  <section class="wr-slide s-blue">
+    <p class="wr-kicker">Duos & Duelle</p>
+    {% if k.best_partner %}
+      <p>Dein Traumpartner</p>
+      <h2 class="wr-name">{{ d.members[k.best_partner.id].short }}</h2>
+      <p>{{ k.best_partner.pct }} % Siege in {{ k.best_partner.games }} gemeinsamen Spielen</p>
+    {% endif %}
+    {% if k.nemesis %}
+      <p class="mt">Dein Angstgegner</p>
+      <h2 class="wr-name">{{ d.members[k.nemesis.id].short }} 😈</h2>
+      <p>Gegen ihn nur {{ k.nemesis.pct }} % gewonnen</p>
+    {% endif %}
+    {% if k.best_streak >= 3 %}<p class="wr-rank">🔥 Beste Serie: {{ k.best_streak }} Siege am Stück</p>{% endif %}
+    {% if not k.best_partner and not k.nemesis %}<p class="wr-big">Für Duos & Duelle hast du dieses Jahr zu wenig gespielt. Nächstes Jahr öfter an den Tisch!</p>{% endif %}
+  </section>
+  {% else %}
+  <section class="wr-slide s-red">
+    <p class="wr-kicker">Am Kicker</p>
+    <h2 class="wr-huge">0</h2>
+    <p class="wr-big">Spiele {{ d.year }} in der Statistik.</p>
+    <p>Sobald Turniere importiert oder in der App gespielt werden, steht hier deine Bilanz.</p>
+  </section>
+  {% endif %}
+
+  <section class="wr-slide s-dark">
+    <p class="wr-kicker">Dein Titel {{ d.year }}</p>
+    {% set b = d.badges[0] %}
+    <div class="wr-emoji">{{ b[0] }}</div>
+    <h2 class="wr-name">{{ b[1] }}</h2>
+    <p class="wr-big">{{ b[2] }}</p>
+    {% if d.badges | length > 1 %}
+    <div class="wr-badges">{% for b in d.badges[1:] %}<span>{{ b[0] }} {{ b[1] }}</span>{% endfor %}</div>
+    {% endif %}
+  </section>
+
+  <section class="wr-slide s-red">
+    <p class="wr-kicker">Der KCU {{ d.year }}</p>
+    <ul class="wr-list">
+      <li><b>{{ d.n_sessions }}</b><span>Sitzungen</span></li>
+      <li><b>{{ d.k_matches }}</b><span>Kicker-Spiele</span></li>
+      <li><b>{{ d.k_goals }}</b><span>Tore</span></li>
+      <li><b>{{ d.pen_total | euro }}</b><span>Strafen</span></li>
+    </ul>
+    {% if d.k_mvp %}<p class="wr-big">MVP am Tisch: <b>{{ d.k_mvp.short or d.k_mvp.name }}</b> mit ★ {{ d.k_mvp_stars }}</p>{% endif %}
+    <p class="wr-big">Auf ein neues Jahr. Zusammenhalt. Stärke. Mut. Und Bier. 🍻</p>
+    <a class="btn btn-primary" href="{{ url_for('main.start') }}">Zurück zur App</a>
+  </section>
+</main>
+{% if preview %}<div class="wr-preview">Vorschau (nur Admin)</div>{% endif %}
+<script src="{{ url_for('static', filename='app.js') }}?v={{ version }}"></script>
+</body>
+</html>

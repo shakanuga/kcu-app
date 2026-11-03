@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Turniere importieren{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('kicker.index') }}">← Kicker</a>
+<h1 class="page-title">Turniere importieren</h1>
+
+<div class="grid-2 wide-left">
+  <div>
+    <form class="card form" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label>Kickertool-Dateien oder eine ZIP mit allen Exporten
+        <input type="file" name="files" multiple accept=".json,.ktool,.zip,application/json,application/zip" required>
+      </label>
+      <label class="check"><input type="checkbox" name="replace" value="1" checked> Schon importierte Turniere aktualisieren</label>
+      <button class="btn btn-primary">Importieren</button>
+      <p class="hint">Im Kickertool: Turnier öffnen → Menü → <b>Exportieren</b> → <b>„Export zu JSON“</b>. Die .ktool-Datei geht auch.
+        Jedes Turnier wird nur einmal angelegt – erneutes Hochladen aktualisiert es. Bierpong- und Flunky-Turniere (Name mit „BP“, „Pong“, „Flunky“, „Rover“) werden erkannt und zählen nicht in die Kicker-Statistik. Turniere mit „Test“ im Namen landen unter „Sonstiges“.</p>
+      <p class="hint">Andersrum geht’s auch: Auf jeder Turnierseite gibt es <b>⬇︎ Export (JSON)</b> – z. B. als Sicherung. In der App gespielte Turniere werden beim erneuten Import nicht doppelt angelegt.</p>
+    </form>
+
+    {% if results %}
+    <section class="card">
+      <h3>Ergebnis</h3>
+      <ul class="import-results">
+        {% for r in results %}
+        <li class="st-{{ r.state }}">
+          <span class="ir-state">{{ {'neu':'✓ neu','aktualisiert':'↻ aktualisiert','übersprungen':'= vorhanden','fehler':'✕ Fehler','leer':'– leer'}[r.state] }}</span>
+          <span>{% if r.tid %}<a href="{{ url_for('kicker.turnier', tid=r.tid) }}">{{ r.name }}</a> <small class="muted">· {{ r.date | date_de }} · {{ r.n }} Spiele{% if r.discipline != 'kicker' %} · {{ discipline_label(r.discipline) }}{% endif %}</small>{% else %}{{ r.msg }}{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+  <div>
+    <section class="card">
+      <h3>Unbekannte Spielernamen</h3>
+      {% if unknown %}
+      <p class="small muted">Diese Namen konnte die App keinem Mitglied zuordnen. Gäste einfach als „Gast“ markieren.</p>
+      <ul class="feed">{% for u in unknown %}<li><span class="feed-who">{{ u.name }}</span><span class="feed-what muted">{{ u.count }} Spiele</span></li>{% endfor %}</ul>
+      <a class="btn" href="{{ url_for('kicker.namen') }}">Namen zuordnen →</a>
+      {% else %}<p class="muted">Alle Namen sind zugeordnet. 👌</p>{% endif %}
+    </section>
+    <p class="hint">Bisher {{ n_total }} Turniere in der App.</p>
+  </div>
+</div>
+{% endblock %}

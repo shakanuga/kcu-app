@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Fehler {{ code }}{% endblock %}
+{% block content %}
+<div class="card empty narrow">
+  <p class="big-emoji">{{ '🙅' if code == 403 else ('🔍' if code == 404 else '⚠️') }}</p>
+  <h1 class="page-title">{% if code == 404 %}Nicht gefunden{% elif code == 403 %}Kein Zutritt{% else %}Das hat nicht geklappt{% endif %}</h1>
+  {% if message %}<p>{{ message }}</p>{% endif %}
+  <a class="btn" href="{{ url_for('main.start') }}">Zur Startseite</a>
+</div>
+{% endblock %}

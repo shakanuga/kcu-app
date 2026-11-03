@@ -1,0 +1,14 @@
+{# Zu-/Absage-Formular. Erwartet: e (Termin), mine (eigene Antwort oder None) #}
+<form class="rsvp-form" method="post" action="{{ url_for('main.termin_antwort', eid=e.id) }}" data-rsvp>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="rsvp-buttons">
+    <label class="rsvp yes"><input type="radio" name="status" value="ja" {{ 'checked' if mine and mine.status == 'ja' }}><span>✓ Bin dabei</span></label>
+    <label class="rsvp maybe"><input type="radio" name="status" value="vielleicht" {{ 'checked' if mine and mine.status == 'vielleicht' }}><span>? Vielleicht</span></label>
+    <label class="rsvp no"><input type="radio" name="status" value="nein" {{ 'checked' if mine and mine.status == 'nein' }}><span>✕ Kann nicht</span></label>
+  </div>
+  <div class="rsvp-extra">
+    <input type="text" name="reason" maxlength="300" placeholder="Grund (bei Absage Pflicht)" value="{{ mine.reason if mine and mine.reason else '' }}">
+    <input type="text" name="guests" maxlength="200" placeholder="Gäste mitbringen? Namen (optional)" value="{{ mine.guests if mine and mine.guests else '' }}">
+    <button class="btn btn-primary" type="submit">{{ 'Antwort ändern' if mine else 'Antworten' }}</button>
+  </div>
+</form>

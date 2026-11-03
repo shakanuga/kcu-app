@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Kein Zugang{% endblock %}
+{% block content %}
+<div class="card empty narrow">
+  <img class="noaccess-logo" src="{{ url_for('static', filename='img/logo.png') }}" alt="">
+  {% if reason == 'config' %}
+    <h1 class="page-title">Noch nicht eingerichtet</h1>
+    <p>Die App weiß noch nicht, wie sie Mitglieder erkennt. Setze im Container entweder
+       <code>KCU_DEV_EMAIL</code> (lokaler Test) oder <code>CF_TEAM_DOMAIN</code> und <code>CF_ACCESS_AUD</code> (Cloudflare Access).</p>
+  {% elif reason == 'unknown' %}
+    <h1 class="page-title">Unbekanntes Mitglied</h1>
+    <p>Du bist als <b>{{ email }}</b> angemeldet, diese Adresse ist aber keinem Mitglied zugeordnet.
+       Sag dem Admin Bescheid, damit er sie bei dir einträgt.</p>
+  {% else %}
+    <h1 class="page-title">Bitte anmelden</h1>
+    <p>Der Zugang läuft über die Anmeldung von Cloudflare. Lade die Seite neu, um dich anzumelden.</p>
+  {% endif %}
+</div>
+{% endblock %}

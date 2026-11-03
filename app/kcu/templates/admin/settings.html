@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen{% endblock %}
+{% block content %}
+<h1 class="page-title">Admin</h1>
+{% include "admin/_nav.html" %}
+<h2 class="section-title">Einstellungen</h2>
+<form class="card form" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  {% for f in fields %}
+    {% if f[0] == 'notify_mode' %}
+    <label>Benachrichtigungen verschicken an
+      <select name="notify_mode">
+        {% for k, v in [('admins','Nur Admins – Testbetrieb'), ('alle','Alle Mitglieder – Echtbetrieb'), ('aus','Niemanden – alles aus')] %}
+        <option value="{{ k }}" {{ 'selected' if (settings.notify_mode or 'admins') == k }}>{{ v }}</option>{% endfor %}
+      </select>
+    </label>
+    {% elif f[2] == 'textarea' %}
+    <label>{{ f[1] }}<textarea name="{{ f[0] }}" rows="4">{{ settings.get(f[0], '') }}</textarea></label>
+    {% elif f[2] == 'password' %}
+    <label>{{ f[1] }}<input type="password" name="{{ f[0] }}" value="" autocomplete="new-password" placeholder="{{ '•••••• (gespeichert – leer lassen = unverändert)' if settings.get(f[0]) else '' }}"></label>
+    {% else %}
+    <label>{{ f[1] }}<input type="text" name="{{ f[0] }}" value="{{ settings.get(f[0], '') }}"></label>
+    {% endif %}
+  {% endfor %}
+  <button class="btn btn-primary">Speichern</button>
+</form>
+<form class="card form" method="post" action="{{ url_for('main.admin_testmail') }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <h3>✉️ Testmail</h3>
+  <p class="small muted">{% if pass_from_env %}Passwort kommt aus der Container-Variable KCU_SMTP_PASS ✓{% else %}Kein Passwort als Container-Variable gesetzt (KCU_SMTP_PASS).{% endif %}
+    {% if not smtp_ok %}<br>SMTP-Server und Absender oben ausfüllen und speichern.{% endif %}</p>
+  <div class="row">
+    <label>An<input type="email" name="to" value="{{ my_email or '' }}" required></label>
+  </div>
+  <button class="btn btn-primary">Testmail senden</button>
+</form>
+<div class="card hint-card">
+  <b>E-Mail-Versand</b>
+  <p>Für Erinnerungen per Mail braucht die App ein Postfach zum Versenden, z. B. von deinem Mail-Anbieter (Strato: <code>smtp.strato.de</code>, Port 465, ssl).
+     Das Passwort kannst du statt hier auch als Container-Variable <code>KCU_SMTP_PASS</code> setzen. Push aufs Handy braucht keine Einstellungen.</p>
+</div>
+<div class="card hint-card">
+  <b>Zur Kasse</b>
+  <p>„Kasse rechnet ab“ ist der erste Monat, für den die App Beiträge berechnet. Alles, was davor offen war,
+     trägst du pro Mitglied als <b>Startsaldo</b> ein, und den Bargeldbestand als <b>Kassenbestand zum Start</b>.</p>
+</div>
+{% endblock %}

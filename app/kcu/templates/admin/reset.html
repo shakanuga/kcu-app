@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Zurücksetzen{% endblock %}
+{% block content %}
+<h1 class="page-title">Admin</h1>
+{% include "admin/_nav.html" %}
+<div class="grid-2 wide-left">
+  <form class="card form" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <h3>Testdaten löschen</h3>
+    <p class="muted">Mitglieder, Rollen, Strafenkatalog, Einstellungen, Protokolle, Museum und Projekte bleiben erhalten.</p>
+    {% for k, v in parts.items() %}
+    <label class="check"><input type="checkbox" name="parts" value="{{ k }}"> {{ v[0] }} <span class="muted small">({{ counts[k] }})</span></label>
+    {% endfor %}
+    <label>Kasse rechnet ab (optional neu setzen)<input type="month" name="kasse_start" value="{{ settings.kasse_start }}"></label>
+    <label>Zur Bestätigung <b>LÖSCHEN</b> eintippen<input type="text" name="confirm" autocomplete="off" placeholder="LÖSCHEN"></label>
+    <button class="btn btn-danger">Ausgewähltes löschen</button>
+  </form>
+  <section class="card">
+    <h3>Sicherungen</h3>
+    <p class="small muted">Vor jedem Zurücksetzen und jedem Kassen-Import legt die App eine Kopie der Datenbank in <code>appdata/kcu/data/backups</code> an. Zum Wiederherstellen: Container stoppen, gewünschte Datei als <code>kcu.db</code> zurückkopieren, starten.</p>
+    {% if backups %}<ul class="feed">{% for b in backups %}<li><span class="feed-what"><code>{{ b }}</code></span></li>{% endfor %}</ul>{% else %}<p class="muted">Noch keine.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

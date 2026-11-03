@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Projekte{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.kasse') }}">← Kasse</a>
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Arbeitskreise &amp; Projekte</h1>
+    <p class="muted">Mannschaftsfahrt, Weihnachtsfeier, Jubiläum: Das Planungsteam plant im Verborgenen und gibt die Abrechnung frei, wenn es so weit ist.</p>
+  </div>
+  {% if can('projekt_anlegen') %}<a class="btn btn-primary" href="{{ url_for('main.projekt_form') }}">+ Neues Projekt</a>{% endif %}
+</div>
+
+{% if projects %}
+<div class="list-cards">
+  {% for p in projects %}
+    {% if p.visible %}
+    <a class="list-card project-card" href="{{ url_for('main.projekt', pid=p.id) }}">
+      <span class="pc-icon">{{ '🔒' if p.status == 'geheim' else '✅' }}</span>
+      <span class="lc-body"><b>{{ p.name }}</b>
+        <small>{% if p.status == 'geheim' %}Geheim · du bist im Planungsteam{% else %}Freigegeben{% endif %}
+          · {{ p.totals.n }} Einträge · Ausgaben {{ p.totals.out | euro }}{% if p.budget %} von {{ p.budget | euro }}{% endif %}</small></span>
+      <span class="lc-arrow">›</span>
+    </a>
+    {% else %}
+    <div class="list-card project-card locked">
+      <span class="pc-icon">🔒</span>
+      <span class="lc-body"><b>{{ p.name }}</b><small>Geheim · nur das Planungsteam ({{ p.team_size }} Personen) sieht die Details</small></span>
+      <a class="btn btn-small" href="{{ url_for('main.projekt_form', pid=p.id) }}">Team</a>
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty"><p class="big-emoji">🧳</p><p>Noch keine Projekte.</p></div>
+{% endif %}
+<p class="hint">Geheime Ausgaben zählen erst nach der Freigabe im Kassenbuch und im Kassenstand mit (Transparenzregel I &amp; II).</p>
+{% endblock %}

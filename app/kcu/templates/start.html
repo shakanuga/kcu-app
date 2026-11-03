@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Start{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-pitch" aria-hidden="true"></div>
+  <div class="hero-content">
+    <p class="eyebrow">Servus, {{ user.short or user.name }}{% if user.number %} · #{{ user.number }}{% endif %}</p>
+    <h1 class="hero-title">{{ settings.club_name or 'Kicker Club United' }}</h1>
+    <p class="hero-tag">{{ settings.tagline }}</p>
+    <div class="hero-stats">
+      <div><b>{{ years }}</b><span>Jahre KCU</span></div>
+      <div><b>{{ cash | euro }}</b><span>in der Kasse</span></div>
+      <div><b>{{ merch_count }}</b><span>Museumsstücke</span></div>
+    </div>
+  </div>
+</section>
+
+{% for b in birthdays if b.days == 0 %}
+<div class="reminder bday-banner"><span class="rem-ico">🎂</span><span><b>{{ b.m.short or b.m.name }} hat heute Geburtstag{% if b.age %} und wird {{ b.age }}{% endif %}!</b> Gratulieren nicht vergessen.</span></div>
+{% endfor %}
+{% if wrapped_year() and user.id %}
+<a class="reminder wrapped-banner" href="{{ url_for('main.rueckblick', year=wrapped_year()) }}">
+  <span class="rem-ico">🎆</span><span><b>Dein KCU-Jahr {{ wrapped_year() }} ist da!</b> Strafen, Sterne, Traumpartner und dein Titel des Jahres.</span><span class="cta-arrow">→</span>
+</a>
+{% endif %}
+{% if user.id %}
+<a class="reminder push-prompt" href="{{ url_for('main.benachrichtigungen') }}" data-push-prompt hidden>
+  <span class="rem-ico">🔔</span><span><b>Erinnerungen aufs Handy?</b> Aktiviere Push-Nachrichten für Termine und Abstimmungen.</span>
+  <span class="linkbtn" data-dismiss>✕</span>
+</a>
+{% endif %}
+{% set reminders = pending_rsvps | rejectattr('id', 'equalto', session.id if session else 0) | list %}
+{% if reminders or open_polls %}
+<section class="reminders">
+  {% for e in reminders %}
+  <a class="reminder" href="{{ url_for('main.termin', eid=e.id) }}">
+    <span class="rem-ico">📅</span>
+    <span><b>{{ e.title }}</b> am {{ e.date[8:10] }}.{{ e.date[5:7] }}. – Zu- oder Absage fehlt{% if e.rsvp_until and e.rsvp_until < today %} <span class="red">(Frist vorbei)</span>{% elif e.rsvp_until %} (bis {{ e.rsvp_until[8:10] }}.{{ e.rsvp_until[5:7] }}.){% endif %}</span>
+    <span class="cta-arrow">→</span>
+  </a>
+  {% endfor %}
+  {% for p in open_polls %}
+  <a class="reminder poll" href="{{ url_for('main.abstimmung', pid=p.id) }}">
+    <span class="rem-ico">🗳️</span>
+    <span><b>{{ p.title }}</b> – deine Stimme fehlt{% if p.closes_at %} (bis {{ p.closes_at[8:10] }}.{{ p.closes_at[5:7] }}., {{ p.closes_at[11:] }}){% endif %}</span>
+    <span class="cta-arrow">→</span>
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
+
+<div class="grid-2">
+  <section class="card session-card">
+  {% if session %}
+    {% set e = session %}{% set mine = my_rsvp %}
+    <div class="session-top">
+      <div>
+        <p class="card-kicker">Nächste Sitzung{% if moved %} · verschoben{% endif %}</p>
+        <h2 class="session-date"><a href="{{ url_for('main.termin', eid=session.id) }}">{{ session.date | date_de(true) }}</a></h2>
+        <p class="session-time">{{ session.time or settings.session_time or '19:30' }} Uhr · {{ session.location or 'Sitzung ist, wo die Sitzung ist.' }}</p>
+      </div>
+      <div class="countdown">
+        {% if days == 0 %}<span class="big">Heute!</span>
+        {% elif days == 1 %}<span class="big">Morgen</span>
+        {% else %}<span class="big">{{ days }}</span><span>Tage noch</span>{% endif %}
+      </div>
+    </div>
+    {% if summary %}
+    <a class="mini-counts big-counts" href="{{ url_for('main.termin', eid=session.id) }}">
+      <i class="c-yes">✓ {{ summary.count.ja }} dabei</i><i class="c-maybe">? {{ summary.count.vielleicht }}</i><i class="c-no">✕ {{ summary.count.nein }}</i><i class="c-open">{{ summary.open | length }} offen</i>
+    </a>
+    {% endif %}
+    {% if user.id and session.rsvp %}
+      {% if my_rsvp %}<p class="small muted">Deine Antwort: <b class="my-{{ my_rsvp.status }}">{{ rsvp_label(my_rsvp.status) }}</b>{% if my_rsvp.reason %} – „{{ my_rsvp.reason }}“{% endif %}</p>
+      {% elif session.rsvp_until %}<p class="small warn">Bitte bis {{ session.rsvp_until | date_de }} antworten – sonst Strafe 4.</p>{% endif %}
+      {% include "_rsvp_buttons.html" %}
+    {% endif %}
+  {% else %}
+    <p class="card-kicker">Nächste Sitzung</p>
+    <h2 class="session-date">Noch nicht geplant</h2>
+    <p class="muted">Der Vorstand kann unter <a href="{{ url_for('main.termine') }}">Termine</a> eine anlegen.</p>
+  {% endif %}
+  </section>
+
+  {% if my_account %}
+  <section class="card account-card {{ 'is-debt' if my_account.open > 0 else 'is-ok' }}">
+    <p class="card-kicker">Mein Konto</p>
+    {% if my_account.open > 0 %}
+      <h2 class="money">{{ my_account.open | euro }}</h2>
+      <p>offen – bitte beim Kassenwart begleichen.</p>
+    {% elif my_account.open < 0 %}
+      <h2 class="money">{{ (-my_account.open) | euro }}</h2>
+      <p>Guthaben. Sauber!</p>
+    {% else %}
+      <h2 class="money">0,00 €</h2>
+      <p>Alles bezahlt. Vorbildlich.</p>
+    {% endif %}
+    {% if my_account.no_trip_subsidy %}<p class="warn">⚠ Ab 50 € Schulden gibt's keinen Zuschuss zur Mannschaftsfahrt (Strafe 8).</p>{% endif %}
+    <a class="btn btn-ghost" href="{{ url_for('main.kasse_mitglied', mid=user.id) }}">Details ansehen</a>
+  </section>
+  {% endif %}
+</div>
+
+<a class="cta-penalty" href="{{ url_for('main.strafen') }}">
+  <span class="cta-icon">⚖</span>
+  <span><b>Strafe eintragen</b><small>Ball liegen gelassen? Rausgekegelt? Sofort notieren.</small></span>
+  <span class="cta-arrow">→</span>
+</a>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-head"><h3>Zuletzt bestraft</h3><a href="{{ url_for('main.strafen') }}">Alle</a></div>
+    {% if recent %}
+    <ul class="feed">
+      {% for p in recent %}
+      <li>
+        <span class="feed-who">{{ p.short or p.name }}</span>
+        <span class="feed-what">{{ p.title }}</span>
+        <span class="feed-amt">{% if p.natural %}{{ p.natural }}{% else %}{{ p.amount | euro }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Noch keine Strafen. Verdächtig ruhig hier.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    {% set soon = birthdays | selectattr('days', 'gt', 0) | list %}
+    {% if soon %}
+    <div class="card-head"><h3>🎂 Geburtstage</h3></div>
+    <ul class="events bday-list">
+      {% for b in soon[:4] %}<li><span class="ev-date">{{ b.date.strftime('%d.%m.') }} · {{ 'morgen' if b.days == 1 else 'in ' ~ b.days ~ ' Tagen' }}</span><span class="ev-title">{{ b.m.short or b.m.name }}{% if b.age %} <small class="muted">wird {{ b.age }}</small>{% endif %}</span></li>{% endfor %}
+    </ul>
+    {% endif %}
+    <div class="card-head"><h3>Weitere Termine</h3><a href="{{ url_for('main.termine') }}">Alle</a></div>
+    {% if events %}
+    <ul class="events">
+      {% for e in events %}
+      <li><span class="ev-date">{{ e.label or (e.date | date_de) }}</span><span class="ev-title"><a href="{{ url_for('main.termin', eid=e.id) }}">{{ e.title }}</a></span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Keine anstehenden Termine.</p>{% endif %}
+  </section>
+</div>
+
+<div class="tiles">
+  <a class="tile" href="{{ url_for('kicker.index') }}"><span class="tile-ico">⚽</span><b>Kicker</b><small>Statistik, Sterne &amp; Turniere</small></a>
+  <a class="tile" href="{{ url_for('main.galerie') }}"><span class="tile-ico">📸</span><b>Galerie</b><small>Touren, Orte, Abende</small></a>
+  <a class="tile" href="{{ url_for('main.museum') }}"><span class="tile-ico">🏆</span><b>Merch-Museum</b><small>Alles, was wir je gemacht haben</small></a>
+  <a class="tile" href="{{ url_for('main.protokolle') }}"><span class="tile-ico">📝</span><b>Protokolle</b><small>{% if last_protocol %}Zuletzt: {{ last_protocol.date | date_de }}{% else %}Beschlüsse &amp; To-dos{% endif %}</small></a>
+  <a class="tile" href="{{ url_for('main.satzung') }}"><span class="tile-ico">📜</span><b>Satzung</b><small>Regeln, Strafen &amp; KCU-GPT</small></a>
+</div>
+
+{% if settings.stammbier %}
+<p class="beer">🍺 Offizielles Stammbier: <b>{{ settings.stammbier }}</b></p>
+{% endif %}
+{% endblock %}

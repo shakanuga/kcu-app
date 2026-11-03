@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Mitglieder{% endblock %}
+{% block content %}
+<h1 class="page-title">Mitgliederregister</h1>
+{% if birthdays %}
+<section class="card bday-card">
+  <h3>🎂 Nächste Geburtstage</h3>
+  <ul class="events">
+    {% for b in birthdays %}<li><span class="ev-date">{{ b.date.strftime('%d.%m.') }}</span><span class="ev-title"><b>{{ b.m.short or b.m.name }}</b>{% if b.age %} wird {{ b.age }}{% endif %} <small class="muted">· {{ 'heute 🎉' if b.days == 0 else ('morgen' if b.days == 1 else 'in ' ~ b.days ~ ' Tagen') }}</small></span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<div class="roster">
+  {% for m in groups.aktiv %}
+  <a class="player" href="{{ url_for('main.profil_ansehen', mid=m.id) }}">
+    {% if m.avatar %}<img class="player-avatar" src="{{ url_for('main.files', name=m.avatar) }}" alt="">{% else %}<span class="player-num">{{ m.number or '–' }}</span>{% endif %}
+    <span class="player-name">{{ m.name }}</span>
+    {% if m.aufgabe %}<span class="player-role">{{ m.aufgabe }}</span>{% endif %}
+    {% if m.birthday %}<span class="player-bday">🎂 {{ m.birthday[8:10] }}.{{ m.birthday[5:7] }}.</span>{% endif %}
+    {% set rs = rmap.get(m.id, []) | reject('equalto', 'admin') | sort %}{% if rs %}<span class="player-tags">{% for r in rs %}<span class="tag role-{{ r }}">{{ ROLE_LABEL[r] }}</span>{% endfor %}</span>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+{% if groups.ehren %}
+<h2 class="section-title">Ehrenmitglieder</h2>
+<div class="roster small">
+  {% for m in groups.ehren %}
+  <div class="player honor"><span class="player-num">★</span><span class="player-name">{{ m.name }}</span>{% if m.aufgabe %}<span class="player-role">{{ m.aufgabe }}</span>{% endif %}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if groups.ehemalig %}
+<h2 class="section-title">Abtrünnige</h2>
+<div class="roster small">
+  {% for m in groups.ehemalig %}
+  <div class="player gone"><span class="player-num">✗</span><span class="player-name">{{ m.name }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2 class="section-title" id="termine">Events <a class="small" href="{{ url_for('main.termine') }}">alle Termine mit Zu-/Absage →</a></h2>
+<section class="card">
+  <ul class="events">
+    {% for e in events %}
+    <li><span class="ev-date">{{ e.label or (e.date | date_de) }}</span><span class="ev-title">{{ e.title }}{% if e.note %} <small class="muted">· {{ e.note }}</small>{% endif %}</span></li>
+    {% endfor %}
+    <li><span class="ev-date">jeden 2. Samstag</span><span class="ev-title">Sitzung, {{ settings.session_time or '19:30' }} Uhr</span></li>
+  </ul>
+</section>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Kalender abonnieren{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.termine') }}">← Termine</a>
+<h1 class="page-title">Kalender abonnieren</h1>
+<p class="muted">Alle KCU-Termine und Geburtstage erscheinen automatisch in deinem Handy-Kalender. Verschiebt der Vorstand eine Sitzung, aktualisiert sich der Kalender von selbst (je nach App alle paar Stunden).</p>
+
+<div class="grid-2">
+  <section class="card">
+    <h3>📱 iPhone, iPad, Mac, Outlook</h3>
+    <p class="small muted">Tippen – der Kalender fragt, ob du abonnieren möchtest.</p>
+    <a class="btn btn-primary" href="{{ webcal }}">Im Kalender abonnieren</a>
+  </section>
+  <section class="card">
+    <h3>🤖 Android / Google Kalender</h3>
+    <p class="small muted">Öffnet Google Kalender im Browser – „Hinzufügen“ bestätigen. Danach erscheint der Kalender auch in der Kalender-App auf dem Handy (ggf. dort unter Einstellungen einschalten).</p>
+    <a class="btn btn-primary" href="{{ google }}" target="_blank" rel="noopener">In Google Kalender hinzufügen</a>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Link zum Kopieren</h3>
+  <p class="small muted">Für andere Kalender-Apps: „Kalender abonnieren / per URL hinzufügen“ wählen und diesen Link einfügen.</p>
+  <div class="copy-row">
+    <input type="text" readonly value="{{ url }}" id="cal-url" onclick="this.select()">
+    <button class="btn" type="button" data-copy="#cal-url">Kopieren</button>
+  </div>
+  <p class="hint">⚠ Der Link ist dein persönlicher Schlüssel (er zeigt z. B., ob du schon zugesagt hast). Nicht weitergeben. Falls doch: neuen Link erstellen – der alte wird dann ungültig.</p>
+  <form method="post" data-confirm="Neuen Link erstellen? Der bisherige funktioniert danach nicht mehr.">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <button class="btn btn-small btn-danger">Neuen Link erstellen</button>
+  </form>
+</section>
+{% endblock %}

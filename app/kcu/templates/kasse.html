@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Kasse{% endblock %}
+{% block content %}
+<h1 class="page-title">Mannschaftskasse</h1>
+{% if vertretung %}
+<div class="card warn-card vertretung-bar">
+  <span>💶 <b>{{ vertretung.member.short or vertretung.member.name }}</b> vertritt den Kassenwart bis {{ vertretung.bis | date_de }}.</span>
+  {% if may_set_vertretung %}
+  <form method="post" action="{{ url_for('main.kasse_vertretung') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn btn-small" name="clear" value="1">Beenden</button></form>
+  {% endif %}
+</div>
+{% elif may_set_vertretung %}
+<details class="card vertretung-bar">
+  <summary>Kassenwart verhindert? Vertretung festlegen</summary>
+  <form class="inline-pay" method="post" action="{{ url_for('main.kasse_vertretung') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <select name="member_id">{% for m in members %}<option value="{{ m.id }}">{{ m.short or m.name }}</option>{% endfor %}</select>
+    <span>bis</span><input type="date" name="bis" value="{{ today }}" required>
+    <button class="btn btn-primary">Festlegen</button>
+  </form>
+</details>
+{% endif %}
+
+<div class="kpis">
+  <div class="kpi"><span>Kassenstand</span><b>{{ cash | euro }}</b></div>
+  <div class="kpi"><span>Noch offen gesamt</span><b class="red">{{ total_open | euro }}</b></div>
+  <div class="kpi"><span>Beitrag</span><b>{{ (settings.beitrag or 0) | float | euro }}<small>/Monat</small></b></div>
+  <div class="kpi"><span>Kasse rechnet seit</span><b class="small">{{ settings.kasse_start | ym_de }}</b></div>
+</div>
+
+<a class="card project-link" href="{{ url_for('main.projekte') }}">
+  <span class="pc-icon">🧳</span>
+  <span class="lc-body"><b>Arbeitskreise &amp; Projekte</b>
+    <small>{% set secret = projects | selectattr('in_team') | selectattr('status', 'equalto', 'geheim') | list %}
+      {% if secret %}{{ secret | length }} geheime{{ 's' if secret|length == 1 }} Projekt{{ 'e' if secret|length != 1 }}, in dem{{ 'n' if secret|length != 1 }} du planst
+      {% else %}Mannschaftsfahrt, Weihnachtsfeier &amp; Co. – Abrechnungen nach Freigabe{% endif %}</small></span>
+  <span class="lc-arrow">›</span>
+</a>
+
+<section class="card">
+  <div class="card-head"><h3>Konten</h3><span class="muted small">Offen = Startsaldo + Beiträge + Strafen − Zahlungen</span></div>
+  <div class="actions kasse-links">
+    <a class="btn btn-small" href="{{ url_for('main.kasse_jahr') }}">📅 Jahresübersicht nach Monaten</a>
+    {% if can('kasse') or can('admin') %}<a class="btn btn-small" href="{{ url_for('main.kasse_import') }}">⬆ Import (CSV)</a>{% endif %}
+  </div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead><tr><th>Mitglied</th><th class="r hide-s">Beiträge</th><th class="r hide-s">Strafen</th><th class="r hide-s">Gezahlt</th><th class="r">Offen</th></tr></thead>
+      <tbody>
+      {% for a in accounts %}
+        {% set m = a.member %}
+        <tr class="{{ 'is-me' if user.id == m.id }}">
+          <td><a href="{{ url_for('main.kasse_mitglied', mid=m.id) }}" class="who">
+            <span class="num">{{ m.number or '·' }}</span>{{ m.short or m.name }}
+            {% if m.status == 'ehren' %}<span class="tag">Ehren</span>{% endif %}
+            {% if a.no_trip_subsidy %}<span class="tag tag-red" title="Ab 50 € Schulden kein Fahrtzuschuss (Strafe 8)">≥ 50 €</span>
+            {% elif a.behind_3_months %}<span class="tag tag-amber" title="Rückstand von mindestens 3 Monatsbeiträgen">3 Monate</span>{% endif %}
+          </a></td>
+          <td class="r hide-s">{{ a.dues | euro }}</td>
+          <td class="r hide-s">{{ a.penalties | euro }}</td>
+          <td class="r hide-s">{{ a.paid | euro }}</td>
+          <td class="r"><b class="{{ 'red' if a.open > 0 else 'green' }}">{{ a.open | euro }}</b></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if can('kasse') %}
+<div class="grid-2">
+  <form class="card" method="post" action="{{ url_for('main.zahlung') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <h3>Zahlung buchen</h3>
+    <label>Mitglied
+      <select name="member_id" required>
+        <option value="">– auswählen –</option>
+        {% for m in members %}<option value="{{ m.id }}">{{ m.short or m.name }}{% if m.number %} (#{{ m.number }}){% endif %}</option>{% endfor %}
+      </select>
+    </label>
+    <div class="row">
+      <label>Betrag (€)<input type="text" inputmode="decimal" name="amount" placeholder="10,00" required data-amount></label>
+      <label>Datum<input type="date" name="date" value="{{ today }}"></label>
+    </div>
+    <div class="quick-amounts">
+      <button type="button" data-set-amount="{{ settings.beitrag }}">1 Beitrag</button>
+      <button type="button" data-set-amount="{{ (settings.beitrag|float * 3) }}">3 Beiträge</button>
+      <button type="button" data-set-amount="{{ (settings.beitrag|float * 12) }}">12 Beiträge</button>
+    </div>
+    <div class="seg pay-method">
+      <label><input type="radio" name="method" value="bar" checked><span>💶 Bar</span></label>
+      <label><input type="radio" name="method" value="paypal"><span>PayPal</span></label>
+      <label><input type="radio" name="method" value="ueberweisung"><span>Überweisung</span></label>
+      <label><input type="radio" name="method" value="verrechnet"><span>Verrechnet</span></label>
+    </div>
+    <div class="row">
+      <label>Notiz<input type="text" name="note" placeholder="z. B. Beitrag Nov + Schnellstrafen" maxlength="200"></label>
+      <label class="narrow-field" style="flex-basis:170px">Für Monat (optional)<input type="month" name="period"></label>
+    </div>
+    <button class="btn btn-primary" type="submit">Zahlung buchen</button>
+  </form>
+
+  <form class="card" method="post" action="{{ url_for('main.kassenbuch') }}" id="kassenbuch">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <h3>Kassenbuch: Einnahme / Ausgabe</h3>
+    <div class="seg">
+      <label><input type="radio" name="kind" value="ausgabe" checked><span>Ausgabe</span></label>
+      <label><input type="radio" name="kind" value="einnahme"><span>Einnahme</span></label>
+    </div>
+    <div class="row">
+      <label>Betrag (€)<input type="text" inputmode="decimal" name="amount" placeholder="45,90" required></label>
+      <label>Datum<input type="date" name="date" value="{{ today }}"></label>
+    </div>
+    <label>Zweck<input type="text" name="purpose" placeholder="z. B. Kasten Hansa, Gastumlage, Mannschaftsfahrt" required maxlength="200"></label>
+    <button class="btn" type="submit">Eintragen</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="grid-2">
+  <section class="card">
+    <h3>Letzte Zahlungen</h3>
+    {% if payments %}
+    <ul class="ledger-list">
+      {% for p in payments %}
+      <li>
+        <div class="ll-main"><b>{{ p.short or p.name }}</b>{% if p.method %} <span class="tag tag-{{ 'blue' if p.method == 'paypal' else 'amber' if p.method == 'bar' else '' }}">{{ pay_method_label(p.method) }}</span>{% endif %}{% if p.note %} · {{ p.note }}{% endif %}
+          <div class="ll-meta">{{ p.date | date_de }}{% if p.period %} · für {{ p.period | ym_de }}{% endif %} · gebucht von {{ p.created_by }}</div></div>
+        <div class="ll-amt green">+{{ p.amount | euro }}</div>
+        {% if can('kasse') %}
+        <form method="post" action="{{ url_for('main.zahlung_loeschen', pid=p.id) }}" data-confirm="Zahlung wirklich löschen?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="icon-btn">✕</button></form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Noch keine Zahlungen gebucht.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <h3>Kassenbuch</h3>
+    {% if ledger %}
+    <ul class="ledger-list">
+      {% for l in ledger %}
+      <li>
+        <div class="ll-main"><b>{{ l.purpose }}</b>{% if l.project_name %} <a class="tag tag-blue" href="{{ url_for('main.projekt', pid=l.project_id) }}">{{ l.project_name }}</a>{% endif %}
+          <div class="ll-meta">{{ l.date | date_de }} · {{ l.created_by }}</div></div>
+        <div class="ll-amt {{ 'green' if l.kind == 'einnahme' else 'red' }}">{{ '+' if l.kind == 'einnahme' else '−' }}{{ l.amount | euro }}</div>
+        {% if can('kasse') and not l.project_id %}
+        <form method="post" action="{{ url_for('main.kassenbuch_loeschen', lid=l.id) }}" data-confirm="Eintrag wirklich löschen?">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="icon-btn">✕</button></form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Noch keine Einnahmen oder Ausgaben.</p>{% endif %}
+    <p class="hint">Transparenzregel II: Der ganze Verein sieht die Abwicklung.</p>
+  </section>
+</div>
+{% endblock %}

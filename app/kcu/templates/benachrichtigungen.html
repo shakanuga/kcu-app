@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Benachrichtigungen{% endblock %}
+{% block content %}
+<h1 class="page-title">Benachrichtigungen</h1>
+{% if (settings.notify_mode or 'admins') != 'alle' %}<div class="card warn-card"><b>Testbetrieb:</b> Automatische Nachrichten gehen gerade {{ 'an niemanden' if settings.notify_mode == 'aus' else 'nur an Admins' }}. Umstellen unter Admin → Einstellungen.</div>{% endif %}
+<p class="muted">Die App erinnert dich an Termine, Rückmeldefristen und Abstimmungen – und sagt Bescheid, wenn ein Termin verschoben wird.</p>
+
+<div class="grid-2">
+  <section class="card" id="push-card" data-vapid="{{ vapid_key }}" data-sub-url="{{ url_for('main.push_subscribe') }}" data-unsub-url="{{ url_for('main.push_unsubscribe') }}" data-csrf="{{ csrf_token }}">
+    <h3>📱 Push auf dieses Gerät</h3>
+    <p class="push-state" data-push-state>Prüfe …</p>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" data-push-on hidden>Auf diesem Gerät aktivieren</button>
+      <button class="btn" type="button" data-push-off hidden>Auf diesem Gerät abschalten</button>
+    </div>
+    <div class="hint ios-hint" data-ios-hint hidden>
+      <b>iPhone/iPad:</b> Push geht nur, wenn die App auf dem Home-Bildschirm liegt:
+      in Safari unten auf <b>Teilen</b> (□↑) → <b>Zum Home-Bildschirm</b>. Dann die App von dort öffnen und hier aktivieren.
+    </div>
+    <p class="hint" data-insecure-hint hidden>Push funktioniert nur über eine sichere Verbindung (https), also sobald die App unter ihrer Internet-Adresse läuft – nicht über die lokale IP.</p>
+  </section>
+
+  <section class="card">
+    <h3>Einstellungen</h3>
+    <form class="form" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label class="check"><input type="checkbox" name="push_on" value="1" {{ 'checked' if not pref or pref.push_on }}> Push-Nachrichten</label>
+      <label class="check"><input type="checkbox" name="email_on" value="1" {{ 'checked' if pref and pref.email_on }} {{ 'disabled' if not smtp_ok or not my_email }}> E-Mails{% if my_email %} an <b>{{ my_email }}</b>{% endif %}</label>
+      {% if not smtp_ok %}<p class="small muted">E-Mail-Versand ist noch nicht eingerichtet (Admin → Einstellungen).</p>
+      {% elif not my_email %}<p class="small muted">Für dich ist keine E-Mail-Adresse hinterlegt.</p>{% endif %}
+      {% if me %}<p class="small muted">Geburtstag, Profilbild und Rufname stellst du unter <a href="{{ url_for('main.profil') }}">Mein Profil</a> ein.</p>{% endif %}
+      <button class="btn btn-primary">Speichern</button>
+    </form>
+    {% if subs %}
+    <h3 class="mt">Angemeldete Geräte</h3>
+    <ul class="feed">
+      {% for s in subs %}
+      <li><span class="feed-what">{{ (s.label or 'Gerät') | truncate(60) }}<br><small class="muted">seit {{ s.created_at[:10] | date_de }}</small></span>
+        <form method="post" action="{{ url_for('main.push_unsubscribe') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ s.id }}"><button class="linkbtn red">entfernen</button></form></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <form method="post" action="{{ url_for('main.push_test') }}" class="mt">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn btn-small">Testnachricht schicken</button>
+    </form>
+  </section>
+</div>
+
+<section class="card hint-card">
+  <b>Wann kommt was?</b>
+  <ul>
+    <li>{{ settings.notify_tage_vorher or 3 }} Tage vor einem Termin mit Zu-/Absage – an alle, die noch nicht geantwortet haben</li>
+    <li>Am Tag der Rückmeldefrist – letzte Erinnerung an alle ohne Antwort</li>
+    <li>Neue Abstimmung – an alle, die abstimmen dürfen; 24 Stunden vor Ende nochmal an alle, die noch fehlen</li>
+    <li>Termin verschoben, abgesagt oder neu angelegt</li>
+    <li>Geburtstage – morgens an alle anderen 🎂</li>
+    <li>An Silvester: dein persönlicher Jahresrückblick 🎆</li>
+  </ul>
+</section>
+{% endblock %}

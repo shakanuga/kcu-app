@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Termine{% endblock %}
+{% block content %}
+<h1 class="page-title">Admin</h1>
+{% include "admin/_nav.html" %}
+<h2 class="section-title">Termine</h2>
+<p class="muted">Die monatliche Sitzung (2. Samstag) rechnet die App selbst aus. Eine Verschiebung trägst du unter „Einstellungen“ ein.</p>
+{% for e in rows %}
+<form class="card catalog-row" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="id" value="{{ e.id }}">
+  <div class="row">
+    <label>Titel<input type="text" name="title" value="{{ e.title }}" required></label>
+    <label class="narrow-field">Datum<input type="date" name="date" value="{{ e.date or '' }}"></label>
+    <label>Anzeige-Text<input type="text" name="label" value="{{ e.label or '' }}" placeholder="z. B. 16.–18.10."></label>
+    <label>Notiz<input type="text" name="note" value="{{ e.note or '' }}"></label>
+  </div>
+  <div class="actions">
+    <button class="btn btn-small">Speichern</button>
+    <button class="btn btn-small btn-danger" name="delete" value="1" data-confirm-btn="Termin löschen?">Löschen</button>
+  </div>
+</form>
+{% endfor %}
+<form class="card catalog-row new" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <h3>Neuer Termin</h3>
+  <div class="row">
+    <label>Titel<input type="text" name="title" required></label>
+    <label class="narrow-field">Datum<input type="date" name="date"></label>
+    <label>Anzeige-Text<input type="text" name="label" placeholder="optional"></label>
+    <label>Notiz<input type="text" name="note"></label>
+  </div>
+  <button class="btn btn-primary">Hinzufügen</button>
+</form>
+{% endblock %}

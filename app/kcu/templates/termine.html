@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Termine{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Termine</h1>
+  <div class="actions">
+    {% if user.id %}<a class="btn" href="{{ url_for('main.kalender') }}">📅 Kalender abonnieren</a>{% endif %}
+    {% if can('termine') %}<a class="btn btn-primary" href="{{ url_for('main.termin_form') }}">+ Termin</a>{% endif %}
+  </div>
+</div>
+
+<div class="list-cards">
+  {% for e in upcoming %}
+    {% set c = counts.get(e.id, {}) %}
+    {% set m = mine.get(e.id) %}
+    <a class="list-card event-card {{ 'is-cancelled' if e.cancelled }} {{ 'is-session' if e.kind == 'sitzung' }}" href="{{ url_for('main.termin', eid=e.id) }}">
+      <span class="lc-date"><b>{{ e.date[8:10] }}</b><small>{{ e.date[5:7] }}/{{ e.date[2:4] }}</small></span>
+      <span class="lc-body">
+        <b>{{ e.title }}{% if e.cancelled %} <span class="tag tag-red">abgesagt</span>{% endif %}</b>
+        <small>{{ e.date | date_de(true) }}{% if e.time %} · {{ e.time }} Uhr{% endif %}{% if e.location %} · {{ e.location }}{% endif %}</small>
+        {% if e.rsvp and not e.cancelled %}
+        <span class="mini-counts"><i class="c-yes">✓ {{ c.get('ja', 0) }}</i><i class="c-maybe">? {{ c.get('vielleicht', 0) }}</i><i class="c-no">✕ {{ c.get('nein', 0) }}</i></span>
+        {% endif %}
+      </span>
+      {% if e.rsvp and not e.cancelled %}
+        {% if m %}<span class="my-rsvp my-{{ m.status }}">{{ rsvp_label(m.status) }}</span>
+        {% else %}<span class="my-rsvp my-open">Antwort fehlt</span>{% endif %}
+      {% endif %}
+    </a>
+  {% else %}
+    <div class="card empty"><p class="muted">Keine anstehenden Termine.</p></div>
+  {% endfor %}
+</div>
+
+{% if undated %}
+<h2 class="section-title">Ohne festes Datum</h2>
+<section class="card">
+  <ul class="events">
+    {% for e in undated %}<li><span class="ev-date">{{ e.label or '—' }}</span><span class="ev-title"><a href="{{ url_for('main.termin', eid=e.id) }}">{{ e.title }}</a></span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if past %}
+<h2 class="section-title">Vergangen</h2>
+<section class="card">
+  <ul class="events">
+    {% for e in past %}<li><span class="ev-date">{{ e.date | date_de }}</span><span class="ev-title"><a href="{{ url_for('main.termin', eid=e.id) }}">{{ e.title }}</a></span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+<p class="hint">Sitzungen (jeder 2. Samstag) legt die App automatisch an. Verschieben oder absagen kann der Vorstand direkt am Termin.</p>
+{% endblock %}

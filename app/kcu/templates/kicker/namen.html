@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Spielernamen{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('kicker.index') }}">← Kicker</a>
+<h1 class="page-title">Spielernamen zuordnen</h1>
+<p class="muted">Im Kickertool heißt ein Spieler mal „Toni“, mal „Tonito“. Hier legst du fest, welcher Name zu welchem Mitglied gehört. Die Statistik rechnet sofort neu – auch rückwirkend.</p>
+
+{% macro member_select(name, current='', with_delete=false) %}
+<select name="map__{{ name }}">
+  <option value="">– offen lassen –</option>
+  <option value="gast" {{ 'selected' if current == 'gast' }}>Gast (nicht zählen)</option>
+  {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if current == m.id }}>{{ m.short or m.name }}{% if m.status != 'aktiv' %} ({{ m.status }}){% endif %}</option>{% endfor %}
+  {% if with_delete %}<option value="loeschen">Zuordnung entfernen</option>{% endif %}
+</select>
+{% endmacro %}
+
+<form method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <section class="card">
+    <div class="card-head"><h3>Noch nicht zugeordnet ({{ unknown | length }})</h3></div>
+    {% if unknown %}
+    <div class="table-wrap">
+    <table class="tbl names-tbl">
+      <thead><tr><th>Name im Kickertool</th><th class="r">Spiele</th><th class="hide-s">zuletzt</th><th>gehört zu</th></tr></thead>
+      <tbody>
+      {% for u in unknown %}
+        <tr><td><b>{{ u.name }}</b></td><td class="r">{{ u.count }}</td><td class="hide-s muted">{{ u.last | date_de }}</td><td>{{ member_select(u.name) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}<p class="muted">Alles zugeordnet.</p>{% endif %}
+  </section>
+
+  {% if aliases %}
+  <section class="card">
+    <details>
+      <summary><b>Bestehende Zuordnungen ({{ aliases | length }})</b></summary>
+      <div class="table-wrap">
+      <table class="tbl names-tbl">
+        <tbody>
+        {% for a in aliases %}
+          <tr><td>{{ a.alias }}</td><td>→ {% if a.ignore %}<span class="muted">Gast</span>{% else %}<b>{{ a.short or a.name }}</b>{% endif %}</td>
+            <td>{{ member_select(a.alias, 'gast' if a.ignore else a.member_id, true) }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </details>
+  </section>
+  {% endif %}
+  <div class="sticky-save"><button class="btn btn-primary">Zuordnungen speichern</button></div>
+</form>
+<p class="hint">Exakte Rufnamen („Kalle“, „Toni“) und eindeutige Vornamen erkennt die App von selbst. Teamnamen (z. B. bei der Sommerfeier) zählen nur für das jeweilige Turnier.</p>
+{% endblock %}

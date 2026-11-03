@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111113">
+  <title>{% block title %}{{ settings.club_short or 'KCU' }}{% endblock %} · {{ settings.club_name or 'Kicker Club United' }}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192.png') }}">
+  <link rel="manifest" href="{{ url_for('main.manifest') }}" crossorigin="use-credentials">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
+<body>
+{% set ep = request.endpoint or '' %}
+{% set todo = nav_todo() if user else {'termine': 0, 'polls': 0} %}
+{% if dev_mode %}
+  <div class="devbar">
+    <span>TESTMODUS · nicht über das Internet freigeben!</span>
+    <form class="devswitch" method="post" action="{{ url_for('main.dev_als') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label>Ansehen als
+        <select name="member_id" onchange="this.form.submit()">
+          <option value="">{{ 'Standard (' ~ (user.short or user.name) ~ ')' if not dev_as() and user else 'Standard (KCU_DEV_EMAIL)' }}</option>
+          {% for m in dev_members() %}<option value="{{ m.id }}" {{ 'selected' if dev_as() == m.id }}>{{ m.short or m.name }}{% if m.number %} #{{ m.number }}{% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <noscript><button>OK</button></noscript>
+      {% if user %}<span class="devroles">Rollen: {% for r in user.roles | sort %}{{ ROLE_LABEL[r] }}{{ ', ' if not loop.last }}{% else %}Mitglied{% endfor %}</span>{% endif %}
+    </form>
+  </div>
+{% endif %}
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('main.start') }}">
+      <img class="brand-logo" src="{{ url_for('static', filename='img/logo.png') }}" alt="KCU-Logo">
+      <span class="brand-text">
+        <span class="brand-short">{{ settings.club_short or 'KCU' }}</span>
+        <span class="brand-sub">{{ settings.club_name or 'Kicker Club United' }}</span>
+      </span>
+    </a>
+    {% if user %}
+    <nav class="mainnav">
+      <a href="{{ url_for('main.start') }}" class="{{ 'on' if ep == 'main.start' }}">Start</a>
+      <a href="{{ url_for('main.termine') }}" class="{{ 'on' if ep.startswith('main.termin') }}">Termine{% if todo.termine %}<i class="badge">{{ todo.termine }}</i>{% endif %}</a>
+      <a href="{{ url_for('main.abstimmungen') }}" class="{{ 'on' if ep.startswith('main.abstimmung') }}">Abstimmungen{% if todo.polls %}<i class="badge">{{ todo.polls }}</i>{% endif %}</a>
+      <a href="{{ url_for('main.strafen') }}" class="{{ 'on' if ep.startswith('main.strafe') }}">Strafen</a>
+      <a href="{{ url_for('main.kasse') }}" class="{{ 'on' if ep.startswith('main.kasse') or ep.startswith('main.projekt') }}">Kasse</a>
+      <a href="{{ url_for('kicker.index') }}" class="{{ 'on' if ep.startswith('kicker.') }}">Kicker</a>
+      {% if can('vorstand') %}<a href="{{ url_for('main.vorstand') }}" class="nav-vorstand {{ 'on' if ep == 'main.vorstand' }}">Vorstand</a>{% endif %}
+      <details class="navmore">
+        <summary class="{{ 'on' if ep == 'main.galerie' or ep.startswith('main.museum') or ep.startswith('main.protokoll') or ep.startswith('main.satzung') or ep == 'main.mitglieder' or ep.startswith('main.admin') }}">Mehr ▾</summary>
+        <div class="navmore-menu">
+          <a href="{{ url_for('main.galerie') }}">📸 Galerie</a>
+          <a href="{{ url_for('main.museum') }}">🏆 Merch-Museum</a>
+          <a href="{{ url_for('main.projekte') }}">🧳 Projekte &amp; Planung</a>
+          <a href="{{ url_for('main.protokolle') }}">📝 Protokolle</a>
+          <a href="{{ url_for('main.satzung') }}">📜 Satzung &amp; KI</a>
+          <a href="{{ url_for('main.mitglieder') }}">👥 Mitglieder</a>
+          <a href="{{ url_for('main.benachrichtigungen') }}">🔔 Benachrichtigungen</a>
+          {% if user.id %}<a href="{{ url_for('main.kalender') }}">📅 Kalender abonnieren</a>{% endif %}
+          {% if can('admin') %}<a href="{{ url_for('main.admin') }}">⚙️ Admin</a>{% endif %}
+        </div>
+      </details>
+    </nav>
+    <a class="me" href="{{ url_for('main.profil') if user.id else url_for('main.benachrichtigungen') }}" title="Mein Profil">
+      {% if user.avatar %}<img class="me-avatar" src="{{ url_for('main.files', name=user.avatar) }}" alt="">{% else %}<span class="me-num">{{ user.number or '★' }}</span>{% endif %}
+      <span class="me-name">{{ user.short or user.name }}</span>
+    </a>
+    {% endif %}
+  </div>
+</header>
+
+<main class="page">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}<div class="flashes">{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}</div>{% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="foot">
+  <span>{{ settings.club_name or 'Kicker Club United' }} · seit {{ settings.founded or '2017' }}</span>
+  {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" target="_blank" rel="noopener">Instagram</a>{% endif %}
+  {% if settings.impressum %}<a href="{{ url_for('main.impressum') }}">Impressum</a>{% endif %}
+  <span class="muted">v{{ version }}</span>
+</footer>
+
+{% if user %}
+<nav class="tabbar">
+  <a href="{{ url_for('main.start') }}" class="{{ 'on' if ep == 'main.start' }}"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Start</a>
+  <a href="{{ url_for('main.termine') }}" class="{{ 'on' if ep.startswith('main.termin') or ep.startswith('main.abstimmung') }}"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4" class="stroke"/></svg>Termine{% if todo.termine + todo.polls %}<i class="badge">{{ todo.termine + todo.polls }}</i>{% endif %}</a>
+  <a href="{{ url_for('main.strafen') }}" class="{{ 'on' if ep.startswith('main.strafe') }}"><svg viewBox="0 0 24 24"><path d="M12 2 3 6v6c0 5 3.8 9.3 9 10 5.2-.7 9-5 9-10V6z"/><path d="M12 8v5M12 16h.01" class="stroke"/></svg>Strafen</a>
+  <a href="{{ url_for('main.kasse') }}" class="{{ 'on' if ep.startswith('main.kasse') or ep.startswith('main.projekt') }}"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3" class="cut"/></svg>Kasse</a>
+  <a href="#" class="more-btn {{ 'on' if ep.startswith('kicker.') or ep == 'main.galerie' or ep == 'main.vorstand' or ep.startswith('main.museum') or ep.startswith('main.protokoll') or ep.startswith('main.satzung') or ep == 'main.mitglieder' or ep.startswith('main.admin') }}" data-more><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Mehr</a>
+</nav>
+<div class="moresheet" hidden>
+  <div class="moresheet-inner">
+    <a href="{{ url_for('main.abstimmungen') }}">🗳️ Abstimmungen{% if todo.polls %}<i class="badge">{{ todo.polls }}</i>{% endif %}</a>
+    <a href="{{ url_for('kicker.index') }}">⚽ Kicker & Statistik</a>
+    <a href="{{ url_for('main.galerie') }}">📸 Galerie</a>
+    {% if can('vorstand') %}<a href="{{ url_for('main.vorstand') }}">🔒 Vorstandsbereich</a>{% endif %}
+    <a href="{{ url_for('main.museum') }}">🏆 Merch-Museum</a>
+    <a href="{{ url_for('main.projekte') }}">🧳 Projekte &amp; Planung</a>
+    <a href="{{ url_for('main.protokolle') }}">📝 Protokolle</a>
+    <a href="{{ url_for('main.satzung') }}">📜 Satzung &amp; KI</a>
+    <a href="{{ url_for('main.mitglieder') }}">👥 Mitglieder</a>
+    {% if user.id %}<a href="{{ url_for('main.profil') }}">👤 Mein Profil</a>{% endif %}
+    <a href="{{ url_for('main.benachrichtigungen') }}">🔔 Benachrichtigungen</a>
+    {% if user.id %}<a href="{{ url_for('main.kalender') }}">📅 Kalender abonnieren</a>{% endif %}
+    {% if wrapped_year() %}<a href="{{ url_for('main.rueckblick', year=wrapped_year()) }}">🎆 Jahresrückblick {{ wrapped_year() }}</a>{% endif %}
+    {% if can('admin') %}<a href="{{ url_for('main.admin') }}">⚙️ Admin</a>{% endif %}
+  </div>
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='app.js') }}?v={{ version }}"></script>
+</body>
+</html>

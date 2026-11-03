@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Turniere{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('kicker.index') }}">← Kicker</a>
+<div class="page-head">
+  <h1 class="page-title">Alle Turniere</h1>
+  {% if can('kicker_verwalten') %}<a class="btn btn-primary" href="{{ url_for('kicker.importieren') }}">Importieren</a>{% endif %}
+</div>
+<div class="chips static filter-chips">
+  <a class="fchip {{ 'on' if not disc }}" href="{{ url_for('kicker.turniere') }}">Alle</a>
+  {% for d, l in [('kicker','Kicker'), ('bierpong','Bierpong'), ('flunky','Flunkyball'), ('sonstiges','Sonstiges / Test')] %}
+  <a class="fchip {{ 'on' if disc == d }}" href="{{ url_for('kicker.turniere', d=d) }}">{{ l }}</a>
+  {% endfor %}
+</div>
+<div class="list-cards">
+  {% for t in rows %}
+  <a class="list-card" href="{{ url_for('kicker.live', tid=t.id) if t.status == 'laeuft' else url_for('kicker.turnier', tid=t.id) }}">
+    <span class="lc-date"><b>{{ t.date[8:10] }}</b><small>{{ t.date[5:7] }}/{{ t.date[2:4] }}</small></span>
+    <span class="lc-body">
+      <b>{{ t.name }}{% if t.status == 'laeuft' %} <span class="tag tag-red">läuft</span>{% endif %}{% if t.discipline != 'kicker' %} <span class="tag">{{ discipline_label(t.discipline) }}</span>{% endif %}{% set c = counting.get(t.id, (false, 'auto')) %}{% if t.discipline == 'kicker' %}{% if c[0] %} <span class="tag tag-green" title="zählt für die Statistik">🏅 Wertung</span>{% else %} <span class="tag" title="zählt nicht für die Statistik">🎉 zum Spaß</span>{% endif %}{% endif %}</b>
+      <small>{{ mode_label(t.mode) }} · {{ t.n }} Spiele{% if winners.get(t.id) %} · 🏆 {{ winners[t.id] }}{% endif %}{% if t.source == 'live' %} · in der App gespielt{% endif %}</small>
+    </span>
+  </a>
+  {% else %}
+  <div class="card empty"><p class="muted">Noch keine Turniere.</p></div>
+  {% endfor %}
+</div>
+{% endblock %}
