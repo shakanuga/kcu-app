@@ -102,8 +102,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TYPE: ${{ steps.meta.outputs.update-type }}
+          ECO: ${{ steps.meta.outputs.package-ecosystem }}
         run: |
-          if [ "$TYPE" = "version-update:semver-major" ] && [ "$MAJOR_AUTOMERGE" != "true" ]; then
+          # Updates der GitHub Actions selbst gelten nicht als riskant – die laufen immer durch
+          if [ "$TYPE" = "version-update:semver-major" ] && [ "$ECO" != "github_actions" ] && [ "$MAJOR_AUTOMERGE" != "true" ]; then
             gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body "Prüfungen sind grün, aber das ist ein großer Versionssprung (major) – der wird hier nicht automatisch gemergt. Bitte kurz anschauen und selbst mergen."
             echo "ok=false" >> "$GITHUB_OUTPUT"
           else
