@@ -5,4 +5,4 @@ pillow>=13.0.0
 pillow-heif>=1.8.1
 markdown>=3.11.3
 tzdata
-pypdf>=6.21.4
+pypdf>=7.0.0
