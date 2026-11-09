@@ -1,4 +1,6 @@
-# Dependabot: schlägt wöchentlich Updates als Pull Request vor
+# Dependabot: sucht jeden Montag nach Updates und macht dafür Pull Requests.
+# Kleine Updates (minor/patch) kommen gesammelt in einem PR, große (major) einzeln.
+# Der Workflow "Updates prüfen & mergen" testet sie und mergt sie automatisch.
 version: 2
 updates:
   - package-ecosystem: "pip"
@@ -6,11 +8,12 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "05:00"
       timezone: "Europe/Berlin"
     groups:
       python-pakete:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: "docker"
@@ -18,8 +21,9 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "05:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     ignore:
       # Python-Hauptversion (3.12 -> 3.13) nur bewusst wechseln
       - dependency-name: "python"
@@ -32,3 +36,5 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
