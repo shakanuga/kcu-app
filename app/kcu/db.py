@@ -387,6 +387,13 @@ def init_db(app):
             word = (note or "").split(" ")[1].strip(" –-,").lower() if len((note or "").split(" ")) > 1 else ""
             if word in months and d:
                 conn.execute("UPDATE payments SET period=? WHERE id=?", (f"{d[:4]}-{months.index(word) + 1:02d}", pid))
+    poll_cols = {r[1] for r in conn.execute("PRAGMA table_info(polls)")}
+    for col, ddl in [("role", "TEXT"), ("seats", "INTEGER"), ("auto_apply", "INTEGER NOT NULL DEFAULT 0"),
+                     ("finalized_at", "TEXT"), ("result", "TEXT")]:   # für Wahlen (kind='wahl')
+        if col not in poll_cols:
+            conn.execute(f"ALTER TABLE polls ADD COLUMN {col} {ddl}")
+    if "member_id" not in {r[1] for r in conn.execute("PRAGMA table_info(poll_options)")}:
+        conn.execute("ALTER TABLE poll_options ADD COLUMN member_id INTEGER REFERENCES members(id) ON DELETE SET NULL")
     merch_cols = {r[1] for r in conn.execute("PRAGMA table_info(merch)")}
     for col, ddl in [("kind", "TEXT NOT NULL DEFAULT 'sammel'"),   # sammel | einzel
                      ("occasion", "TEXT"), ("price", "REAL"),

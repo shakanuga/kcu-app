@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Rollen & Wahlen{% endblock %}
+{% block content %}
+{% if can('admin') %}<h1 class="page-title">Admin</h1>{% include "admin/_nav.html" %}{% else %}<a class="back" href="{{ url_for('main.vorstand') }}">← Vorstand</a>{% endif %}
+
+<div class="page-head">
+  <div>
+    <h2 class="section-title">Rollen</h2>
+    <p class="muted small">Wer hat welche Rolle? Häkchen setzen oder entfernen und speichern – z. B. wenn der alte Vorstand an den neuen übergibt.</p>
+  </div>
+</div>
+
+<form method="post" class="card table-card">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <div class="table-wrap">
+  <table class="tbl roles-grid">
+    <thead><tr><th>Mitglied</th>
+      {% for r in roles %}<th class="c"><span class="tag role-{{ r }}">{{ ROLE_LABEL[r] }}</span></th>{% endfor %}
+      <th class="hide-s">Aufgabe im Verein</th></tr></thead>
+    <tbody>
+    {% for m in members %}{% set mine = rmap.get(m.id, []) %}
+      <tr class="{{ 'dim' if m.status == 'ehren' }}">
+        <td><b>{{ m.short or m.name }}</b>{% if m.number %} <span class="muted small">#{{ m.number }}</span>{% endif %}{% if m.status == 'ehren' %} <span class="muted small">Ehrenmitglied</span>{% endif %}{% if m.email and m.email.lower() in env_admins %} <span class="tag role-admin" title="Admin über die Container-Variable KCU_ADMIN_EMAILS – bleibt immer Admin">🔑 fest</span>{% endif %}</td>
+        {% for r in roles %}
+        <td class="c"><label class="role-box"><input type="checkbox" name="r_{{ m.id }}_{{ r }}" value="1" {{ 'checked' if r in mine }} {{ 'disabled' if r not in editable }} aria-label="{{ ROLE_LABEL[r] }} für {{ m.short or m.name }}"></label></td>
+        {% endfor %}
+        <td class="hide-s"><input type="text" name="a_{{ m.id }}" value="{{ m.aufgabe or '' }}" maxlength="150" placeholder="z. B. Protokoll, DJ …"></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div class="actions"><button class="btn btn-primary">Rollen speichern</button></div>
+  {% if 'admin' not in editable %}<p class="hint">Die Admin-Rolle kann nur ein Admin vergeben.</p>{% endif %}
+</form>
+
+<div class="page-head">
+  <div>
+    <h2 class="section-title">Wahlen</h2>
+    <p class="muted small">Alle stimmen ab – sobald alle aktiven Mitglieder abgestimmt haben oder die Frist abläuft, wird ausgewertet, die Rolle (auf Wunsch) automatisch übergeben und alle bekommen das Ergebnis.</p>
+  </div>
+</div>
+<div class="actions">
+  {% for k, l in elect_roles.items() %}<a class="btn" href="{{ url_for('main.wahl_neu', rolle=k) }}">🗳️ {{ l }} wählen</a>{% endfor %}
+</div>
+{% if elections %}
+<section class="card">
+  <ul class="events">
+    {% for e in elections %}
+    <li><span class="ev-date">{{ e.created_at[:10] | date_de }}</span>
+      <span class="ev-title"><a href="{{ url_for('main.abstimmung', pid=e.id) }}">{{ e.title }}</a>
+        <small class="muted">· {{ e.result if e.finalized_at else 'läuft' }}</small></span></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

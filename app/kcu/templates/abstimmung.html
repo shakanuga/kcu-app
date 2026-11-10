@@ -4,7 +4,7 @@
 <a class="back" href="{{ url_for('main.vorstand') if p.audience == 'vorstand' else url_for('main.abstimmungen') }}">← {{ 'Vorstand' if p.audience == 'vorstand' else 'Abstimmungen' }}</a>
 <div class="page-head">
   <div>
-    <p class="card-kicker">{{ 'Vorstandsabstimmung' if p.audience == 'vorstand' else 'Abstimmung' }} · {{ 'beendet' if closed else 'läuft' }}{% if p.anonymous %} · anonym{% endif %}{% if p.kind == 'multi' %} · Mehrfachauswahl{% endif %}</p>
+    <p class="card-kicker">{{ 'Vorstandsabstimmung' if p.audience == 'vorstand' else 'Abstimmung' }} · {{ 'beendet' if closed else 'läuft' }}{% if p.anonymous %} · anonym{% endif %}{% if p.kind == 'multi' %} · Mehrfachauswahl{% elif p.kind == 'wahl' %} · Wahl · {{ p.seats or 1 }} Platz{{ 'e' if (p.seats or 1) > 1 }}{% endif %}</p>
     <h1 class="page-title">{{ p.title }}</h1>
     <p class="muted small">gestartet von {{ p.created_by }} am {{ p.created_at[:10] | date_de }}{% if p.closes_at %} · {{ 'endete' if closed else 'läuft bis' }} {{ p.closes_at[:10] | date_de }}, {{ p.closes_at[11:] }} Uhr{% endif %}</p>
     {% if event %}<p class="small">📅 Zum Termin: <a href="{{ url_for('main.termin', eid=event.id) }}">{{ event.title }} ({{ event.date | date_de }})</a></p>{% endif %}
@@ -16,10 +16,11 @@
 <form class="card poll-form" method="post" action="{{ url_for('main.abstimmung_stimme', pid=p.id) }}">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <h3>{{ 'Stimme ändern' if voted else 'Deine Stimme' }}</h3>
+  {% if p.kind == 'wahl' and (p.seats or 1) > 1 %}<p class="muted small">Du kannst bis zu {{ p.seats }} Personen wählen.</p>{% endif %}
   <div class="poll-options">
     {% for r in results.options %}
     <label class="poll-opt">
-      <input type="{{ 'checkbox' if p.kind == 'multi' else 'radio' }}" name="option" value="{{ r.option.id }}" {{ 'checked' if r.option.id in my_options }}>
+      <input type="{{ 'checkbox' if p.kind == 'multi' or (p.kind == 'wahl' and (p.seats or 1) > 1) else 'radio' }}" name="option" value="{{ r.option.id }}" {{ 'checked' if r.option.id in my_options }}>
       <span>{{ r.option.label }}</span>
     </label>
     {% endfor %}
@@ -29,6 +30,13 @@
 </form>
 {% elif voted and not closed %}
 <div class="card"><p>✓ Du hast abgestimmt.</p></div>
+{% endif %}
+
+{% if p.kind == 'wahl' and p.finalized_at %}
+<section class="card winner-card">
+  <p class="card-kicker">Wahlergebnis</p>
+  <h2 class="page-title">🗳️ {{ p.result }}</h2>
+</section>
 {% endif %}
 
 <section class="card">
@@ -54,7 +62,7 @@
 {% if may_manage %}
 <form class="actions" method="post" action="{{ url_for('main.abstimmung_beenden', pid=p.id) }}">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
-  {% if not closed %}<button class="btn">Abstimmung jetzt beenden</button>{% endif %}
+  {% if not closed %}<button class="btn" {% if p.kind == 'wahl' %}data-confirm-btn="Wahl jetzt beenden und auswerten?"{% endif %}>{{ 'Wahl jetzt beenden & auswerten' if p.kind == 'wahl' else 'Abstimmung jetzt beenden' }}</button>{% endif %}
   <button class="btn btn-danger" name="delete" value="1" data-confirm-btn="Abstimmung samt Stimmen löschen?">Löschen</button>
   {% if closed and event and can('termine') %}<a class="btn" href="{{ url_for('main.termin_form', eid=event.id) }}">Termin anpassen</a>{% endif %}
 </form>

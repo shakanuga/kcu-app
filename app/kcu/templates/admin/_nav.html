@@ -1,6 +1,7 @@
 {% set ep = request.endpoint or '' %}
 <nav class="subnav">
   <a href="{{ url_for('main.admin') }}" class="{{ 'on' if ep in ('main.admin', 'main.admin_member') }}">Mitglieder &amp; Zugänge</a>
+  <a href="{{ url_for('main.rollen') }}" class="{{ 'on' if ep in ('main.rollen', 'main.wahl_neu') }}">Rollen &amp; Wahlen</a>
   <a href="{{ url_for('main.admin_catalog') }}" class="{{ 'on' if ep == 'main.admin_catalog' }}">Strafenkatalog</a>
   <a href="{{ url_for('main.termine') }}">Termine ↗</a>
   <a href="{{ url_for('main.admin_settings') }}" class="{{ 'on' if ep == 'main.admin_settings' }}">Einstellungen</a>

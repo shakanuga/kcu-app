@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Wahl starten{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('main.rollen') }}">← Rollen & Wahlen</a>
+<h1 class="page-title">Wahl starten</h1>
+
+<div class="chips presets">
+  <span class="muted small">Was wird gewählt?</span>
+  {% for k, l in elect_roles.items() %}<a class="chip {{ 'on' if role == k }}" href="{{ url_for('main.wahl_neu', rolle=k) }}">{{ l }}</a>{% endfor %}
+</div>
+
+<form class="card form" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="rolle" value="{{ role }}">
+  <div class="row">
+    <label>Titel<input type="text" name="title" maxlength="150" value="Wahl: {{ elect_roles[role] }}"></label>
+    <label class="narrow-field">Plätze<input type="number" name="seats" min="1" max="10" value="{{ seats }}"></label>
+  </div>
+  <div class="label">Wer tritt an?</div>
+  <div class="chips" data-chips>
+    {% for m in members %}
+    <label class="chip"><input type="checkbox" name="kandidaten" value="{{ m.id }}"><span>{% if m.number %}<i>{{ m.number }}</i> {% endif %}{{ m.short or m.name }}{% if m.id in holders %} ★{% endif %}</span></label>
+    {% endfor %}
+    <button type="button" class="chip chip-all" data-chips-all>Alle</button>
+  </div>
+  <p class="hint">★ = hat die Rolle bisher.</p>
+  <label>Beschreibung (optional)<textarea name="description" rows="2" placeholder="z. B. Amtszeit bis zur nächsten Wahl im August"></textarea></label>
+  <label>Endet spätestens am (optional)<input type="datetime-local" name="closes_at"></label>
+  <label class="check"><input type="checkbox" name="anonymous" value="1" checked> Geheime Wahl (niemand sieht, wer wen gewählt hat)</label>
+  <label class="check"><input type="checkbox" name="auto_apply" value="1" checked> Rolle danach automatisch an die Gewählten übergeben (die Bisherigen verlieren sie)</label>
+  <button class="btn btn-primary">Wahl starten & alle benachrichtigen</button>
+  <p class="hint">Ausgewertet wird, sobald alle aktiven Mitglieder abgestimmt haben, die Frist abläuft oder ihr die Wahl von Hand beendet. Bei Gleichstand um den letzten Platz wird nichts automatisch vergeben – dann einfach eine Stichwahl starten oder oben bei den Rollen von Hand entscheiden.</p>
+</form>
+{% endblock %}

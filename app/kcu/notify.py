@@ -313,6 +313,8 @@ def run_due():
             sent += deliver(missing, "🗳️ Abstimmung endet bald",
                             f"„{p['title']}“ läuft bis {short_date(p['closes_at'])} {p['closes_at'][11:]} Uhr – deine Stimme fehlt.",
                             f"/abstimmungen/{p['id']}", key=f"poll-end-{p['id']}")
+    from . import wahl
+    sent += wahl.check_all(db)
     from .logic import birthdays
     for b in birthdays(0, today):
         m = b["m"]

@@ -8,6 +8,7 @@
     <p class="muted small">Sichtbar für: {% for m in board %}{{ m.short or m.name }}{{ ', ' if not loop.last }}{% else %}niemand{% endfor %}. Admins ohne Vorstandsrolle sehen hier nichts.</p>
   </div>
   <div class="actions">
+    <a class="btn" href="{{ url_for('main.rollen') }}">👥 Rollen &amp; Wahlen</a>
     <a class="btn btn-primary" href="{{ url_for('main.abstimmung_form') }}">+ Vorstandsabstimmung</a>
   </div>
 </div>

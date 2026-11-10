@@ -923,3 +923,9 @@ a.player:hover { border-color: var(--blue); }
 .merch-facts { margin: 10px 0 14px; }
 .owner-chips { margin-bottom: 14px; }
 .owner-chips .chip span { cursor: pointer; }
+
+/* v2.8 – Rollen & Wahlen */
+.roles-grid td.c, .roles-grid th.c { text-align: center; }
+.role-box { margin: 0; display: inline-flex; padding: 6px; cursor: pointer; }
+.role-box input { width: 20px; height: 20px; accent-color: var(--red); }
+.roles-grid input[type=text] { min-width: 180px; }

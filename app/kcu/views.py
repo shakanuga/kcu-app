@@ -866,6 +866,76 @@ def admin_member(mid=None):
     return render_template("admin/member.html", m=m, roles=auth.ROLES, my_roles=auth.roles_of(mid) if mid else set())
 
 
+@bp.route("/rollen", methods=["GET", "POST"])
+@require("rollen")
+def rollen():
+    """Übersicht: wer hat welche Rolle – Admin und Vorstand können sie hier direkt ändern."""
+    from . import wahl
+    db = get_db()
+    members = db.execute("SELECT * FROM members WHERE status IN ('aktiv','ehren') ORDER BY "
+                         "CASE status WHEN 'aktiv' THEN 0 ELSE 1 END, sort, name").fetchall()
+    editable = auth.ROLES if auth.can("admin") else [r for r in auth.ROLES if r != "admin"]
+    if request.method == "POST":
+        ids = {m["id"] for m in members}
+        changed = []
+        for m in members:
+            before = auth.roles_of(m["id"])
+            after = {r for r in editable if request.form.get(f"r_{m['id']}_{r}")} | (before - set(editable))
+            if after != before:
+                db.execute("DELETE FROM member_roles WHERE member_id=?", (m["id"],))
+                for r in after:
+                    db.execute("INSERT INTO member_roles(member_id, role) VALUES (?,?)", (m["id"], r))
+                changed.append(m["short"] or m["name"])
+            aufgabe = (request.form.get(f"a_{m['id']}") or "").strip()[:150]
+            if m["id"] in ids and aufgabe != (m["aufgabe"] or ""):
+                db.execute("UPDATE members SET aufgabe=? WHERE id=?", (aufgabe, m["id"]))
+        db.commit()
+        flash(f"Rollen gespeichert ({', '.join(changed)})." if changed else "Gespeichert.", "ok")
+        return redirect(url_for("main.rollen"))
+    elections = db.execute("SELECT * FROM polls WHERE kind='wahl' ORDER BY created_at DESC LIMIT 10").fetchall()
+    return render_template("rollen.html", members=members, rmap=auth.roles_map(), roles=auth.ROLES, editable=editable,
+                           elect_roles=wahl.ELECT_ROLES, elections=elections,
+                           env_admins={e.lower() for e in auth.admin_emails()})
+
+
+@bp.route("/rollen/wahl", methods=["GET", "POST"])
+@require("rollen")
+def wahl_neu():
+    from . import notify, wahl
+    db = get_db()
+    role = request.values.get("rolle") if request.values.get("rolle") in wahl.ELECT_ROLES else "vorstand"
+    members = db.execute("SELECT * FROM members WHERE status='aktiv' ORDER BY sort, name").fetchall()
+    holders = [m["id"] for m in members if role in auth.roles_of(m["id"])]
+    if request.method == "POST":
+        f = request.form
+        valid = {m["id"]: m for m in members}
+        cands = [valid[i] for i in f.getlist("kandidaten", type=int) if i in valid]
+        seats = max(1, min(10, f.get("seats", type=int) or 1))
+        closes = (f.get("closes_at") or "").strip()[:16] or None
+        if len(cands) < 1:
+            flash("Bitte mindestens einen Kandidaten auswählen.", "error")
+        else:
+            label = wahl.ELECT_ROLES[role]
+            title = (f.get("title") or "").strip()[:150] or f"Wahl: {label}"
+            desc = (f.get("description") or "").strip()[:1000] or (
+                f"Gewählt werden {seats} Person{'en' if seats > 1 else ''} als {label}. "
+                f"Du kannst bis zu {seats} Stimme{'n' if seats > 1 else ''} vergeben.")
+            pid = db.execute(
+                "INSERT INTO polls(title, description, kind, audience, anonymous, show_results, closes_at, created_by_id, "
+                "created_by, role, seats, auto_apply) VALUES (?,?, 'wahl', 'alle', ?, 'nach_ende', ?,?,?,?,?,?)",
+                (title, desc, 1 if f.get("anonymous") else 0, closes, g.user.get("id"), actor(), role, seats,
+                 1 if f.get("auto_apply") else 0)).lastrowid
+            for i, m in enumerate(cands):
+                db.execute("INSERT INTO poll_options(poll_id, label, sort, member_id) VALUES (?,?,?,?)",
+                           (pid, m["short"] or m["name"], i, m["id"]))
+            db.commit()
+            notify.on_new_poll(pid, title, "alle", g.user.get("id"), actor())
+            flash("Wahl gestartet – alle wurden benachrichtigt.", "ok")
+            return redirect(url_for("main.abstimmung", pid=pid))
+    return render_template("wahl_form.html", role=role, elect_roles=wahl.ELECT_ROLES, members=members,
+                           holders=holders, seats=max(1, len(holders)))
+
+
 @bp.route("/admin/katalog", methods=["GET", "POST"])
 @require("admin")
 def admin_catalog():
@@ -1223,6 +1293,10 @@ def abstimmung(pid):
     p = get_db().execute("SELECT * FROM polls WHERE id=?", (pid,)).fetchone()
     if not p or not _poll_visible(p):
         abort(404)
+    if p["kind"] == "wahl" and not p["finalized_at"]:
+        from . import wahl
+        if wahl.finalize(get_db(), p):
+            p = get_db().execute("SELECT * FROM polls WHERE id=?", (pid,)).fetchone()
     closed = _poll_closed(p)
     voted = _has_voted(pid)
     results = _poll_results(p)
@@ -1250,6 +1324,9 @@ def abstimmung_stimme(pid):
     chosen = [o for o in request.form.getlist("option", type=int) if o in valid]
     if p["kind"] == "single":
         chosen = chosen[:1]
+    elif p["kind"] == "wahl" and len(chosen) > (p["seats"] or 1):
+        flash(f"Du kannst höchstens {p['seats'] or 1} Person(en) wählen.", "error")
+        return redirect(url_for("main.abstimmung", pid=pid))
     if not chosen:
         flash("Bitte eine Auswahl treffen.", "error")
         return redirect(url_for("main.abstimmung", pid=pid))
@@ -1266,6 +1343,10 @@ def abstimmung_stimme(pid):
                (pid, uid))
     db.commit()
     flash("Stimme gespeichert.", "ok")
+    if p["kind"] == "wahl":
+        from . import wahl
+        if wahl.finalize(db, db.execute("SELECT * FROM polls WHERE id=?", (pid,)).fetchone()):
+            flash("Alle haben abgestimmt – die Wahl ist ausgewertet.", "ok")
     return redirect(url_for("main.abstimmung", pid=pid))
 
 
@@ -1318,6 +1399,11 @@ def abstimmung_beenden(pid):
         db.commit()
         flash("Abstimmung gelöscht.", "ok")
         return redirect(url_for("main.abstimmungen"))
+    if p["kind"] == "wahl":
+        from . import wahl
+        msg = wahl.finalize(db, p, force=True)
+        flash(f"Wahl beendet. {msg or ''}", "ok")
+        return redirect(url_for("main.abstimmung", pid=pid))
     db.execute("UPDATE polls SET status='geschlossen' WHERE id=?", (pid,))
     db.commit()
     flash("Abstimmung beendet.", "ok")

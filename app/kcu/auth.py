@@ -149,6 +149,8 @@ def can(perm):
         return has_role("admin") or has_role("vorstand") or has_role("kassenwart")
     if perm == "termine":         # Termine anlegen/verschieben/absagen
         return has_role("admin") or has_role("vorstand")
+    if perm == "rollen":          # Rollen übergeben und Wahlen starten
+        return has_role("admin") or has_role("vorstand")
     if perm == "kicker_verwalten":  # Turniere importieren/löschen, Spielernamen zuordnen
         return has_role("admin") or has_role("vorstand")
     return False
