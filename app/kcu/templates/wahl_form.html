@@ -14,8 +14,17 @@
   <input type="hidden" name="rolle" value="{{ role }}">
   <div class="row">
     <label>Titel<input type="text" name="title" maxlength="150" value="Wahl: {{ elect_roles[role] }}"></label>
-    <label class="narrow-field">Plätze<input type="number" name="seats" min="1" max="10" value="{{ seats }}"></label>
+    <label class="narrow-field">Plätze<input type="number" name="seats" min="1" max="10" value="{{ seats }}" data-seats></label>
   </div>
+  {% if holder_rows %}
+  <div class="label">Wessen Platz wird neu gewählt?</div>
+  <div class="chips" data-count-into="seats">
+    {% for m in holder_rows %}{% set sd = since.get((m.id, role)) %}
+    <label class="chip"><input type="checkbox" name="ersetzt" value="{{ m.id }}" checked><span>{{ m.short or m.name }}{% if sd %} <i>seit {{ sd[5:7] }}/{{ sd[2:4] }}</i>{% endif %}</span></label>
+    {% endfor %}
+  </div>
+  <p class="hint">Für versetzte Wahlen (z. B. zwei Plätze im März, der dritte im August): nur die anhaken, deren Platz jetzt neu besetzt wird. Die anderen bleiben im Amt und stehen nicht zur Wahl. Wer wiedergewählt werden will, tritt einfach unten mit an.</p>
+  {% endif %}
   <div class="label">Wer tritt an?</div>
   <div class="chips" data-chips>
     {% for m in members %}
@@ -27,7 +36,7 @@
   <label>Beschreibung (optional)<textarea name="description" rows="2" placeholder="z. B. Amtszeit bis zur nächsten Wahl im August"></textarea></label>
   <label>Endet spätestens am (optional)<input type="datetime-local" name="closes_at"></label>
   <label class="check"><input type="checkbox" name="anonymous" value="1" checked> Geheime Wahl (niemand sieht, wer wen gewählt hat)</label>
-  <label class="check"><input type="checkbox" name="auto_apply" value="1" checked> Rolle danach automatisch an die Gewählten übergeben (die Bisherigen verlieren sie)</label>
+  <label class="check"><input type="checkbox" name="auto_apply" value="1" checked> Rolle danach automatisch an die Gewählten übergeben (nur die oben angehakten Plätze werden frei)</label>
   <button class="btn btn-primary">Wahl starten & alle benachrichtigen</button>
   <p class="hint">Ausgewertet wird, sobald alle aktiven Mitglieder abgestimmt haben, die Frist abläuft oder ihr die Wahl von Hand beendet. Bei Gleichstand um den letzten Platz wird nichts automatisch vergeben – dann einfach eine Stichwahl starten oder oben bei den Rollen von Hand entscheiden.</p>
 </form>

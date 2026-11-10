@@ -81,6 +81,23 @@ def roles_of(member_id):
     return {r["role"] for r in get_db().execute("SELECT role FROM member_roles WHERE member_id=?", (member_id,))}
 
 
+def set_roles(member_id, roles):
+    """Rollen eines Mitglieds setzen – bestehende behalten ihr „seit“-Datum."""
+    from datetime import date
+    db = get_db()
+    cur = roles_of(member_id)
+    for r in cur - set(roles):
+        db.execute("DELETE FROM member_roles WHERE member_id=? AND role=?", (member_id, r))
+    for r in set(roles) - cur:
+        db.execute("INSERT OR IGNORE INTO member_roles(member_id, role, since) VALUES (?,?,?)",
+                   (member_id, r, date.today().isoformat()))
+
+
+def role_since():
+    """{(member_id, role): 'YYYY-MM-DD'}"""
+    return {(r["member_id"], r["role"]): r["since"] for r in get_db().execute("SELECT * FROM member_roles")}
+
+
 def roles_map():
     out = {}
     for r in get_db().execute("SELECT member_id, role FROM member_roles"):

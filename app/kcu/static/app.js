@@ -128,6 +128,13 @@
     sync();
   });
 
+  // Wahl: Anzahl der frei werdenden Plätze ins Feld „Plätze“ übernehmen
+  document.querySelectorAll('[data-count-into]').forEach(box => {
+    const target = box.closest('form').querySelector('[data-seats]');
+    const upd = () => { const n = box.querySelectorAll('input:checked').length; if (target && n) target.value = n; };
+    box.querySelectorAll('input').forEach(i => i.addEventListener('change', upd));
+  });
+
   // Kicker: TV-Ansicht aktualisiert sich selbst, sobald ein Ergebnis eingetragen wurde
   const tv = document.getElementById('tv');
   if (tv) {

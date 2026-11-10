@@ -5,6 +5,7 @@ Sie endet, wenn die Frist abgelaufen ist, alle aktiven Mitglieder abgestimmt hab
 sie beendet. Dann werden die Gewählten ermittelt, die Rolle (auf Wunsch) automatisch übergeben
 und alle benachrichtigt.
 """
+import json
 from datetime import datetime
 
 ELECT_ROLES = {"vorstand": "Vorstand", "kassenwart": "Kassenwart", "redaktion": "Redaktion"}
@@ -62,15 +63,27 @@ def finalize(db, p, force=False):
     else:
         text = f"Gewählt: {names}"
         if p["auto_apply"]:
-            db.execute("DELETE FROM member_roles WHERE role=?", (role,))
+            today = datetime.now().strftime("%Y-%m-%d")
+            replaces = json.loads(p["replaces"]) if p["replaces"] else None
+            if replaces:   # Teilwahl: nur diese Plätze werden neu besetzt, die anderen bleiben im Amt
+                for mid in replaces:
+                    db.execute("DELETE FROM member_roles WHERE role=? AND member_id=?", (role, mid))
+            else:
+                db.execute("DELETE FROM member_roles WHERE role=?", (role,))
             for w in winners:
                 if w["member_id"]:
-                    db.execute("INSERT OR IGNORE INTO member_roles(member_id, role) VALUES (?,?)", (w["member_id"], role))
+                    db.execute("INSERT OR REPLACE INTO member_roles(member_id, role, since) VALUES (?,?,?)",
+                               (w["member_id"], role, today))
             applied = True
     db.execute("UPDATE polls SET status='geschlossen', finalized_at=?, result=? WHERE id=?",
                (datetime.now().strftime("%Y-%m-%d %H:%M"), text + (" (Rolle übernommen)" if applied else ""), p["id"]))
     db.commit()
     body = text + (f" – die Rolle „{label}“ ist jetzt vergeben." if applied else "")
+    if applied:
+        team = [r["short"] or r["name"] for r in db.execute(
+            "SELECT m.short, m.name FROM member_roles r JOIN members m ON m.id=r.member_id WHERE r.role=? ORDER BY m.sort",
+            (role,))]
+        body += f" {label} jetzt: {', '.join(team)}."
     notify.deliver_async(active_ids(db), f"🗳️ Wahlergebnis {label}", body, f"/abstimmungen/{p['id']}",
                          key=f"wahl-{p['id']}")
     return text

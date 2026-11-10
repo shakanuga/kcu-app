@@ -1,4 +1,5 @@
 """Alle Seiten der KCU-App."""
+import json
 import os
 import re
 from datetime import date, datetime, timedelta
@@ -855,9 +856,7 @@ def admin_member(mid=None):
                 else:
                     mid = db.execute("INSERT INTO members(name, short, number, email, role, status, aufgabe, joined, left_at, opening, sort, birthday) "
                                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", vals + (birthday,)).lastrowid
-                db.execute("DELETE FROM member_roles WHERE member_id=?", (mid,))
-                for r in roles:
-                    db.execute("INSERT INTO member_roles(member_id, role) VALUES (?,?)", (mid, r))
+                auth.set_roles(mid, roles)
                 db.commit()
                 flash("Gespeichert.", "ok")
                 return redirect(url_for("main.admin"))
@@ -882,9 +881,7 @@ def rollen():
             before = auth.roles_of(m["id"])
             after = {r for r in editable if request.form.get(f"r_{m['id']}_{r}")} | (before - set(editable))
             if after != before:
-                db.execute("DELETE FROM member_roles WHERE member_id=?", (m["id"],))
-                for r in after:
-                    db.execute("INSERT INTO member_roles(member_id, role) VALUES (?,?)", (m["id"], r))
+                auth.set_roles(m["id"], after)
                 changed.append(m["short"] or m["name"])
             aufgabe = (request.form.get(f"a_{m['id']}") or "").strip()[:150]
             if m["id"] in ids and aufgabe != (m["aufgabe"] or ""):
@@ -895,7 +892,7 @@ def rollen():
     elections = db.execute("SELECT * FROM polls WHERE kind='wahl' ORDER BY created_at DESC LIMIT 10").fetchall()
     return render_template("rollen.html", members=members, rmap=auth.roles_map(), roles=auth.ROLES, editable=editable,
                            elect_roles=wahl.ELECT_ROLES, elections=elections,
-                           env_admins={e.lower() for e in auth.admin_emails()})
+                           env_admins={e.lower() for e in auth.admin_emails()}, since=auth.role_since())
 
 
 @bp.route("/rollen/wahl", methods=["GET", "POST"])
@@ -909,22 +906,27 @@ def wahl_neu():
     if request.method == "POST":
         f = request.form
         valid = {m["id"]: m for m in members}
-        cands = [valid[i] for i in f.getlist("kandidaten", type=int) if i in valid]
-        seats = max(1, min(10, f.get("seats", type=int) or 1))
+        replaces = [i for i in f.getlist("ersetzt", type=int) if i in holders]
+        staying = [i for i in holders if i not in replaces]
+        cands = [valid[i] for i in f.getlist("kandidaten", type=int) if i in valid and i not in staying]
+        seats = max(1, min(10, f.get("seats", type=int) or len(replaces) or 1))
         closes = (f.get("closes_at") or "").strip()[:16] or None
         if len(cands) < 1:
             flash("Bitte mindestens einen Kandidaten auswählen.", "error")
         else:
             label = wahl.ELECT_ROLES[role]
             title = (f.get("title") or "").strip()[:150] or f"Wahl: {label}"
+            stay_names = ", ".join(valid[i]["short"] or valid[i]["name"] for i in staying)
             desc = (f.get("description") or "").strip()[:1000] or (
                 f"Gewählt werden {seats} Person{'en' if seats > 1 else ''} als {label}. "
-                f"Du kannst bis zu {seats} Stimme{'n' if seats > 1 else ''} vergeben.")
+                f"Du kannst bis zu {seats} Stimme{'n' if seats > 1 else ''} vergeben."
+                + (f" {stay_names} bleibt im Amt." if len(staying) == 1 else
+                   f" {stay_names} bleiben im Amt." if staying else ""))
             pid = db.execute(
                 "INSERT INTO polls(title, description, kind, audience, anonymous, show_results, closes_at, created_by_id, "
-                "created_by, role, seats, auto_apply) VALUES (?,?, 'wahl', 'alle', ?, 'nach_ende', ?,?,?,?,?,?)",
+                "created_by, role, seats, auto_apply, replaces) VALUES (?,?, 'wahl', 'alle', ?, 'nach_ende', ?,?,?,?,?,?,?)",
                 (title, desc, 1 if f.get("anonymous") else 0, closes, g.user.get("id"), actor(), role, seats,
-                 1 if f.get("auto_apply") else 0)).lastrowid
+                 1 if f.get("auto_apply") else 0, json.dumps(replaces))).lastrowid
             for i, m in enumerate(cands):
                 db.execute("INSERT INTO poll_options(poll_id, label, sort, member_id) VALUES (?,?,?,?)",
                            (pid, m["short"] or m["name"], i, m["id"]))
@@ -932,8 +934,10 @@ def wahl_neu():
             notify.on_new_poll(pid, title, "alle", g.user.get("id"), actor())
             flash("Wahl gestartet – alle wurden benachrichtigt.", "ok")
             return redirect(url_for("main.abstimmung", pid=pid))
+    since = auth.role_since()
+    holder_rows = sorted((m for m in members if m["id"] in holders), key=lambda m: since.get((m["id"], role)) or "")
     return render_template("wahl_form.html", role=role, elect_roles=wahl.ELECT_ROLES, members=members,
-                           holders=holders, seats=max(1, len(holders)))
+                           holders=holders, holder_rows=holder_rows, since=since, seats=max(1, len(holders)))
 
 
 @bp.route("/admin/katalog", methods=["GET", "POST"])

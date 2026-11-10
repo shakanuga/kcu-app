@@ -929,3 +929,4 @@ a.player:hover { border-color: var(--blue); }
 .role-box { margin: 0; display: inline-flex; padding: 6px; cursor: pointer; }
 .role-box input { width: 20px; height: 20px; accent-color: var(--red); }
 .roles-grid input[type=text] { min-width: 180px; }
+.roles-grid .since { display: block; font-size: .68rem; color: var(--muted); margin-top: -2px; }

@@ -22,7 +22,7 @@
       <tr class="{{ 'dim' if m.status == 'ehren' }}">
         <td><b>{{ m.short or m.name }}</b>{% if m.number %} <span class="muted small">#{{ m.number }}</span>{% endif %}{% if m.status == 'ehren' %} <span class="muted small">Ehrenmitglied</span>{% endif %}{% if m.email and m.email.lower() in env_admins %} <span class="tag role-admin" title="Admin über die Container-Variable KCU_ADMIN_EMAILS – bleibt immer Admin">🔑 fest</span>{% endif %}</td>
         {% for r in roles %}
-        <td class="c"><label class="role-box"><input type="checkbox" name="r_{{ m.id }}_{{ r }}" value="1" {{ 'checked' if r in mine }} {{ 'disabled' if r not in editable }} aria-label="{{ ROLE_LABEL[r] }} für {{ m.short or m.name }}"></label></td>
+        <td class="c"><label class="role-box"><input type="checkbox" name="r_{{ m.id }}_{{ r }}" value="1" {{ 'checked' if r in mine }} {{ 'disabled' if r not in editable }} aria-label="{{ ROLE_LABEL[r] }} für {{ m.short or m.name }}"></label>{% set sd = since.get((m.id, r)) if r in mine else None %}{% if sd %}<small class="since">seit {{ sd[5:7] }}/{{ sd[2:4] }}</small>{% endif %}</td>
         {% endfor %}
         <td class="hide-s"><input type="text" name="a_{{ m.id }}" value="{{ m.aufgabe or '' }}" maxlength="150" placeholder="z. B. Protokoll, DJ …"></td>
       </tr>

@@ -387,9 +387,12 @@ def init_db(app):
             word = (note or "").split(" ")[1].strip(" –-,").lower() if len((note or "").split(" ")) > 1 else ""
             if word in months and d:
                 conn.execute("UPDATE payments SET period=? WHERE id=?", (f"{d[:4]}-{months.index(word) + 1:02d}", pid))
+    if "since" not in {r[1] for r in conn.execute("PRAGMA table_info(member_roles)")}:
+        conn.execute("ALTER TABLE member_roles ADD COLUMN since TEXT")   # YYYY-MM-DD: seit wann (für versetzte Wahlen)
     poll_cols = {r[1] for r in conn.execute("PRAGMA table_info(polls)")}
     for col, ddl in [("role", "TEXT"), ("seats", "INTEGER"), ("auto_apply", "INTEGER NOT NULL DEFAULT 0"),
-                     ("finalized_at", "TEXT"), ("result", "TEXT")]:   # für Wahlen (kind='wahl')
+                     ("finalized_at", "TEXT"), ("result", "TEXT"),
+                     ("replaces", "TEXT")]:   # JSON: wessen Platz neu besetzt wird (Teilwahl); leer = alle   # für Wahlen (kind='wahl')
         if col not in poll_cols:
             conn.execute(f"ALTER TABLE polls ADD COLUMN {col} {ddl}")
     if "member_id" not in {r[1] for r in conn.execute("PRAGMA table_info(poll_options)")}:
