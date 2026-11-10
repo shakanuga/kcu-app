@@ -17,7 +17,23 @@
   <div class="ed-info">
     <p class="card-kicker">{{ it.year or 'Ohne Jahr' }}{% if it.category %} · {{ it.category }}{% endif %}</p>
     <h1 class="page-title">{{ it.name }}</h1>
-    <span class="status status-{{ it.status }} static">{{ merch_status_label(it.status) }}</span>
+    {% set k = kinds.get(it.kind or 'sammel') %}
+    <ul class="facts merch-facts">
+      <li><span>Art</span><b>{{ k[0] }} {{ k[1] }}</b></li>
+      {% if it.occasion %}<li><span>Anlass</span><b>{{ it.occasion }}</b></li>{% endif %}
+      {% if it.kind == 'einzel' %}
+        <li><span>Aktuell bei</span><b>{% if holder %}<a href="{{ url_for('main.profil_ansehen', mid=holder.id) }}">{{ holder.short or holder.name }}</a>{% else %}–{% endif %}</b></li>
+      {% else %}
+        {% if n_owned %}<li><span>Bestellt</span><b>{{ n_owned }} Stück</b></li>{% endif %}
+        {% if it.price is not none %}<li><span>Preis pro Stück</span><b>{{ it.price | euro }}</b></li>{% endif %}
+      {% endif %}
+    </ul>
+    {% if owners %}
+    <p class="label">Wer hat eins</p>
+    <div class="chips static owner-chips">
+      {% for o in owners %}<a class="chip" href="{{ url_for('main.profil_ansehen', mid=o.id) }}"><span>{% if o.number %}<i>{{ o.number }}</i> {% endif %}{{ o.short or o.name }}{% if o.qty > 1 %} ×{{ o.qty }}{% endif %}</span></a>{% endfor %}
+    </div>
+    {% endif %}
     {% if it.description %}<div class="prose">{{ it.description | markdown }}</div>{% endif %}
     {% if can('redaktion') %}
     <div class="actions">

@@ -87,6 +87,15 @@
     </section>
     {% endif %}
 
+    {% if merch %}
+    <section class="card">
+      <div class="card-head"><h3>👕 Merch-Sammlung</h3><a href="{{ url_for('main.museum') }}">Museum</a></div>
+      <div class="chips static">
+        {% for x in merch %}<a class="chip" href="{{ url_for('main.museum_item', iid=x.id) }}"><span>{{ '🏆 ' if x.kind == 'einzel' }}{{ x.name }}{% if x.year %} <i>{{ x.year }}</i>{% endif %}</span></a>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
     <section class="card">
       <h3>🛡️ Rollen & Rechte</h3>
       <ul class="rights">

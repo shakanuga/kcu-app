@@ -4,7 +4,7 @@
 <a class="back" href="{{ url_for('main.museum_item', iid=it.id) if it else url_for('main.museum') }}">← zurück</a>
 <h1 class="page-title">{{ 'Stück bearbeiten' if it else 'Neues Museumsstück' }}</h1>
 
-<form class="card form" method="post" enctype="multipart/form-data">
+<form class="card form" method="post" enctype="multipart/form-data" data-switch="kind">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <label>Name<input type="text" name="name" value="{{ it.name if it else '' }}" required maxlength="120" placeholder="z. B. Heimtrikot rot"></label>
   <div class="row">
@@ -16,13 +16,37 @@
       </select>
     </label>
   </div>
-  <p class="label">Status</p>
-  <div class="seg">
-    {% for key, label in statuses.items() %}
-    <label><input type="radio" name="status" value="{{ key }}" {{ 'checked' if (it and it.status == key) or (not it and key == 'vorhanden') }}><span>{{ label }}</span></label>
+  <fieldset class="seg-pick">
+    <legend>Was für ein Stück?</legend>
+    {% set kind = it.kind if it and it.kind else 'sammel' %}
+    {% for key, (icon, label, hint) in kinds.items() %}
+    <label class="segopt" title="{{ hint }}"><input type="radio" name="kind" value="{{ key }}" {{ 'checked' if kind == key }}><span>{{ icon }} {{ label }}</span></label>
     {% endfor %}
+  </fieldset>
+  <div class="row">
+    <label>Anlass (optional)<input type="text" name="occasion" maxlength="120" value="{{ it.occasion if it and it.occasion else '' }}" placeholder="z. B. Mannschaftsfahrt, Jubiläum"></label>
+    <label class="narrow-field" data-when="sammel">Preis pro Stück (€)<input type="text" name="price" inputmode="decimal" value="{{ ('%.2f' % it.price) | replace('.', ',') if it and it.price is not none else '' }}" placeholder="optional"></label>
   </div>
-  <label>Geschichte dazu<textarea name="description" rows="6" placeholder="Wer hat's entworfen, wie viele gab es, welche Anekdote gehört dazu?">{{ it.description if it else '' }}</textarea></label>
+
+  <div data-when="sammel">
+    <div class="label">Wer hat eins?</div>
+    <div class="chips" data-chips>
+      {% for m in members %}
+      <label class="chip"><input type="checkbox" name="owner_ids" value="{{ m.id }}" {{ 'checked' if m.id in owned }}><span>{% if m.number %}<i>{{ m.number }}</i> {% endif %}{{ m.short or m.name }}{% if owned.get(m.id, 1) > 1 %} ×{{ owned[m.id] }}{% endif %}</span></label>
+      {% if owned.get(m.id, 1) > 1 %}<input type="hidden" name="qty_{{ m.id }}" value="{{ owned[m.id] }}">{% endif %}
+      {% endfor %}
+      <button type="button" class="chip chip-all" data-chips-all>Alle</button>
+    </div>
+  </div>
+
+  <label data-when="einzel">Aktuell bei
+    <select name="holder_id">
+      <option value="">– niemand / im Vereinsheim –</option>
+      {% for m in members %}<option value="{{ m.id }}" {{ 'selected' if it and it.holder_id == m.id }}>{{ m.short or m.name }}</option>{% endfor %}
+    </select>
+  </label>
+
+  <label>Geschichte dazu<textarea name="description" rows="6" placeholder="Wer hat's entworfen, wo bestellt, welche Anekdote gehört dazu?">{{ it.description if it else '' }}</textarea></label>
   <label>Fotos hinzufügen<input type="file" name="photos" accept="image/*" multiple></label>
   {% if photos %}
   <div class="photo-manage">

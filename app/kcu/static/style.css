@@ -916,3 +916,10 @@ a.player:hover { border-color: var(--blue); }
 @media (max-width: 760px) { .tv-grid-bracket { grid-template-columns: 1fr; } }
 
 .tag-green { background: rgba(76,195,138,.15); color: var(--green); }
+
+/* v2.7 – Merch-Museum */
+.status-sammel { background: rgba(70,130,180,.9); }
+.status-einzel { background: rgba(240,178,74,.92); color: #111; }
+.merch-facts { margin: 10px 0 14px; }
+.owner-chips { margin-bottom: 14px; }
+.owner-chips .chip span { cursor: pointer; }

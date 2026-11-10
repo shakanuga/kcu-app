@@ -117,6 +117,17 @@
     sync();
   });
 
+  // Formulare mit Umschalter: Felder mit data-when nur bei passender Auswahl zeigen
+  document.querySelectorAll('[data-switch]').forEach(f => {
+    const name = f.dataset.switch;
+    const sync = () => {
+      const v = (f.querySelector(`[name="${name}"]:checked`) || {}).value;
+      f.querySelectorAll('[data-when]').forEach(el => { el.hidden = el.dataset.when !== v; });
+    };
+    f.querySelectorAll(`[name="${name}"]`).forEach(r => r.addEventListener('change', sync));
+    sync();
+  });
+
   // Kicker: TV-Ansicht aktualisiert sich selbst, sobald ein Ergebnis eingetragen wurde
   const tv = document.getElementById('tv');
   if (tv) {

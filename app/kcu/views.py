@@ -542,12 +542,10 @@ def foto(size, rel):
 
 MERCH_CATEGORIES = ["Trikot", "Shirt", "Hoodie / Jacke", "Weste", "Mütze / Schal", "Pokal", "Sticker / Druck",
                     "Becher / Glas", "Sonstiges"]
-MERCH_STATUS = {"vorhanden": "Noch da", "weg": "Nicht mehr da", "einzelstueck": "Einzelstück"}
-
-
-@bp.app_template_global()
-def merch_status_label(s):
-    return MERCH_STATUS.get(s, s)
+MERCH_KINDS = {
+    "sammel": ("👕", "Sammelbestellung", "Für die Truppe bestellt – jeder hat seins"),
+    "einzel": ("🏆", "Einzelstück", "Gibt's nur einmal, z. B. Pokal, Weste oder Banner"),
+}
 
 
 def _merch_with_cover(rows):
@@ -557,8 +555,15 @@ def _merch_with_cover(rows):
         ph = db.execute("SELECT file FROM merch_photos WHERE merch_id=? ORDER BY sort, id LIMIT 1", (r["id"],)).fetchone()
         d = dict(r)
         d["cover"] = ph["file"] if ph else None
+        d["n_owned"] = db.execute("SELECT COALESCE(SUM(qty),0) FROM merch_owners WHERE merch_id=?", (r["id"],)).fetchone()[0]
+        d["holder"] = db.execute("SELECT * FROM members WHERE id=?", (r["holder_id"],)).fetchone() if r["holder_id"] else None
         out.append(d)
     return out
+
+
+def _merch_members():
+    return get_db().execute("SELECT * FROM members WHERE status IN ('aktiv','ehren','ehemalig') ORDER BY "
+                            "CASE status WHEN 'aktiv' THEN 0 WHEN 'ehren' THEN 1 ELSE 2 END, sort, name").fetchall()
 
 
 @bp.route("/museum")
@@ -585,7 +590,11 @@ def museum_item(iid):
     if not it:
         abort(404)
     photos = db.execute("SELECT * FROM merch_photos WHERE merch_id=? ORDER BY sort, id", (iid,)).fetchall()
-    return render_template("museum_item.html", it=it, photos=photos)
+    owners = db.execute("SELECT m.*, o.qty FROM merch_owners o JOIN members m ON m.id=o.member_id "
+                        "WHERE o.merch_id=? ORDER BY m.sort, m.name", (iid,)).fetchall()
+    holder = db.execute("SELECT * FROM members WHERE id=?", (it["holder_id"],)).fetchone() if it["holder_id"] else None
+    return render_template("museum_item.html", it=it, photos=photos, owners=owners, holder=holder,
+                           kinds=MERCH_KINDS, n_owned=sum(o["qty"] for o in owners))
 
 
 def _save_merch_photos(iid):
@@ -616,24 +625,40 @@ def museum_form(iid=None):
         year = request.form.get("year", type=int)
         category = (request.form.get("category") or "").strip()[:60]
         desc = (request.form.get("description") or "").strip()[:4000]
-        status = request.form.get("status") if request.form.get("status") in MERCH_STATUS else "vorhanden"
+        kind = request.form.get("kind") if request.form.get("kind") in MERCH_KINDS else "sammel"
+        occasion = (request.form.get("occasion") or "").strip()[:120]
+        try:
+            price = round(float((request.form.get("price") or "").replace(",", ".")), 2) if request.form.get("price") else None
+        except ValueError:
+            price = None
+        valid_ids = {m["id"] for m in _merch_members()}
+        holder_id = request.form.get("holder_id", type=int) if kind == "einzel" else None
+        holder_id = holder_id if holder_id in valid_ids else None
+        owner_ids = [i for i in request.form.getlist("owner_ids", type=int) if i in valid_ids] if kind == "sammel" else []
         if not name:
             flash("Bitte einen Namen angeben.", "error")
         else:
             if it:
-                db.execute("UPDATE merch SET name=?, year=?, category=?, description=?, status=? WHERE id=?",
-                           (name, year, category, desc, status, iid))
+                db.execute("UPDATE merch SET name=?, year=?, category=?, description=?, kind=?, occasion=?, price=?, "
+                           "holder_id=? WHERE id=?", (name, year, category, desc, kind, occasion, price, holder_id, iid))
             else:
-                cur = db.execute("INSERT INTO merch(name, year, category, description, status, created_by) VALUES (?,?,?,?,?,?)",
-                                 (name, year, category, desc, status, actor()))
+                cur = db.execute("INSERT INTO merch(name, year, category, description, kind, occasion, price, holder_id, "
+                                 "created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+                                 (name, year, category, desc, kind, occasion, price, holder_id, actor()))
                 iid = cur.lastrowid
+            old_qty = {r["member_id"]: r["qty"] for r in db.execute("SELECT * FROM merch_owners WHERE merch_id=?", (iid,))}
+            db.execute("DELETE FROM merch_owners WHERE merch_id=?", (iid,))
+            for mid in owner_ids:
+                qty = max(1, min(20, request.form.get(f"qty_{mid}", type=int) or old_qty.get(mid, 1)))
+                db.execute("INSERT INTO merch_owners(merch_id, member_id, qty) VALUES (?,?,?)", (iid, mid, qty))
             _save_merch_photos(iid)
             db.commit()
             flash("Gespeichert.", "ok")
             return redirect(url_for("main.museum_item", iid=iid))
     photos = db.execute("SELECT * FROM merch_photos WHERE merch_id=? ORDER BY sort, id", (iid,)).fetchall() if iid else []
+    owned = {r["member_id"]: r["qty"] for r in db.execute("SELECT * FROM merch_owners WHERE merch_id=?", (iid,))} if iid else {}
     return render_template("museum_form.html", it=it, photos=photos, categories=MERCH_CATEGORIES,
-                           statuses=MERCH_STATUS)
+                           kinds=MERCH_KINDS, members=_merch_members(), owned=owned)
 
 
 @bp.route("/museum/<int:iid>/loeschen", methods=["POST"])
@@ -2168,10 +2193,12 @@ def _render_profile(m, own):
                      "AND substr(e.date,1,4)=?", (m["id"], str(date.today().year))).fetchone()[0]
     k = stats.get(m["id"])
     partner = (res.members[k["best_partner"]["id"]]["short"] if k and k.get("best_partner") else None)
+    merch = db.execute("SELECT DISTINCT x.id, x.name, x.year, x.kind FROM merch x LEFT JOIN merch_owners o ON o.merch_id=x.id "
+                       "WHERE o.member_id=? OR x.holder_id=? ORDER BY x.year DESC, x.name", (m["id"], m["id"])).fetchall()
     return render_template("profil.html", m=m, own=own, roles=sorted(roles), rights=rights, vertretung=vertretung,
                            partner=partner,
                            k=stats.get(m["id"]), titles=tit.get("gold", 0), nick=nick, acc=acc, pref=pref,
-                           positions=POSITIONS, n_pens=n_pens, yes=yes)
+                           positions=POSITIONS, n_pens=n_pens, yes=yes, merch=merch)
 
 
 # =============================================================================

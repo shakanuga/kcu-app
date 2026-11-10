@@ -23,12 +23,13 @@
     <h2 class="tl-label">{{ year }}</h2>
     <div class="exhibits">
       {% for it in items %}
-      <a class="exhibit {{ 'is-gone' if it.status == 'weg' }}" href="{{ url_for('main.museum_item', iid=it.id) }}">
+      <a class="exhibit" href="{{ url_for('main.museum_item', iid=it.id) }}">
         <span class="exhibit-img">
           {% if it.cover %}<img loading="lazy" src="{{ url_for('main.files', name=it.cover) }}" alt="">{% else %}<span class="exhibit-empty">👕</span>{% endif %}
-          <span class="status status-{{ it.status }}">{{ merch_status_label(it.status) }}</span>
+          {% if it.kind == 'einzel' %}<span class="status status-einzel">🏆 {{ ('bei ' ~ (it.holder.short or it.holder.name)) if it.holder else 'Einzelstück' }}</span>
+          {% elif it.n_owned %}<span class="status status-sammel">👕 {{ it.n_owned }}× bestellt</span>{% endif %}
         </span>
-        <span class="exhibit-text"><b>{{ it.name }}</b><small>{{ it.category or '—' }}</small></span>
+        <span class="exhibit-text"><b>{{ it.name }}</b><small>{{ it.category or '—' }}{% if it.occasion %} · {{ it.occasion }}{% endif %}</small></span>
       </a>
       {% endfor %}
     </div>

@@ -98,6 +98,13 @@ CREATE TABLE IF NOT EXISTS merch (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS merch_owners (            -- wer hat ein Exemplar (Sammelbestellung)
+  merch_id  INTEGER NOT NULL REFERENCES merch(id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  qty       INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (merch_id, member_id)
+);
+
 CREATE TABLE IF NOT EXISTS merch_photos (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   merch_id  INTEGER NOT NULL REFERENCES merch(id) ON DELETE CASCADE,
@@ -380,6 +387,14 @@ def init_db(app):
             word = (note or "").split(" ")[1].strip(" –-,").lower() if len((note or "").split(" ")) > 1 else ""
             if word in months and d:
                 conn.execute("UPDATE payments SET period=? WHERE id=?", (f"{d[:4]}-{months.index(word) + 1:02d}", pid))
+    merch_cols = {r[1] for r in conn.execute("PRAGMA table_info(merch)")}
+    for col, ddl in [("kind", "TEXT NOT NULL DEFAULT 'sammel'"),   # sammel | einzel
+                     ("occasion", "TEXT"), ("price", "REAL"),
+                     ("holder_id", "INTEGER REFERENCES members(id) ON DELETE SET NULL")]:
+        if col not in merch_cols:
+            conn.execute(f"ALTER TABLE merch ADD COLUMN {col} {ddl}")
+            if col == "kind":
+                conn.execute("UPDATE merch SET kind='einzel' WHERE status='einzelstueck'")
     kt_cols = {r[1] for r in conn.execute("PRAGMA table_info(kt_tournaments)")}
     if "counts" not in kt_cols:
         # Wertung: NULL = automatisch (erster Modus des Abends), 1 = zählt immer, 0 = nur zum Spaß
