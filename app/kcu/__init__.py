@@ -8,7 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import auth, db, logic, media
 
-VERSION = "2.8.1"
+VERSION = "2.9.0"
 
 
 def _secret_key(data_dir):
@@ -63,7 +63,8 @@ def create_app():
             "version": VERSION,
         }
 
-    PUBLIC = {"static", "main.manifest", "main.health", "main.service_worker", "main.calendar_feed", "main.impressum", "manifest", "health"}
+    PUBLIC = {"static", "main.manifest", "main.health", "main.service_worker", "main.calendar_feed", "main.impressum", "manifest", "health",
+              "kicker.gast_tv", "kicker.gast_status"}
 
     @app.before_request
     def before():

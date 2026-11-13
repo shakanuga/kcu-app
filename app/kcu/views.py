@@ -416,8 +416,12 @@ def projekt_form(pid=None):
     p = db.execute("SELECT * FROM projects WHERE id=?", (pid,)).fetchone() if pid else None
     if pid and not p:
         abort(404)
-    if not (auth.can("projekt_anlegen") or (pid and _in_team(pid))):
-        abort(403, "Projekte legen Admin, Vorstand oder Kassenwart an – bearbeiten darf auch das Team.")
+    if pid:
+        # Geheime Projekte bearbeitet nur das Planungsteam – auch Admins schauen da nicht rein
+        if not (_in_team(pid) or (p["status"] == "freigegeben" and auth.can("projekt_anlegen"))):
+            abort(403, "Dieses Projekt ist noch geheim – nur das Planungsteam kann es bearbeiten.")
+    elif not auth.can("projekt_anlegen"):
+        abort(403, "Projekte legen Admin, Vorstand oder Kassenwart an.")
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()[:120]
         desc = (request.form.get("description") or "").strip()[:2000]
@@ -986,6 +990,7 @@ def admin_events():
 SETTING_FIELDS = [
     ("app_url", "Adresse der App (für Links in Mails), z. B. https://kcu.example.org – leer lassen = automatisch"),
     ("kickertool_url", "Link zum Kickertool"), ("kicker_ziel", "Kicker: Tore bis zum Sieg (Standard)"),
+    ("kicker_timer", "Kicker: Spielzeit-Timer in Minuten (Standard, z. B. 2)"),
     ("notify_mode", "Benachrichtigungen verschicken an: aus, admins (Testbetrieb) oder alle"),
     ("notify_tage_vorher", "Erinnerung: Tage vor einem Termin"), ("notify_uhrzeit", "Erinnerungen ab Uhrzeit (Stunde, z. B. 10)"),
     ("smtp_host", "E-Mail: SMTP-Server"), ("smtp_port", "E-Mail: Port (587 oder 465)"),

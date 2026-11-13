@@ -1,4 +1,4 @@
-{% from "kicker/_macros.html" import team, bracket_view %}
+{% from "kicker/_macros.html" import team, bracket_view, timer_box %}
 <header class="tv-head">
   <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="tv-logo">
   <div>
@@ -9,7 +9,7 @@
 <main class="tv-grid {{ 'tv-grid-bracket' if bracket }}">
   <section class="tv-now">
     {% if current %}
-      <div class="tv-label">Jetzt am Tisch · {{ current.round_label }}</div>
+      <div class="tv-now-head"><div class="tv-label">Jetzt am Tisch · {{ current.round_label }}</div>{% if timer.dur %}{{ timer_box(timer, 'tv') }}{% endif %}</div>
       <div class="tv-match">
         <div class="tv-team blue">{% for n in current.t1 %}<span>{{ res.label(n) }}</span>{% endfor %}</div>
         <div class="tv-vs">VS</div>

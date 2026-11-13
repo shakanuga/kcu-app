@@ -930,3 +930,23 @@ a.player:hover { border-color: var(--blue); }
 .role-box input { width: 20px; height: 20px; accent-color: var(--red); }
 .roles-grid input[type=text] { min-width: 180px; }
 .roles-grid .since { display: block; font-size: .68rem; color: var(--muted); margin-top: -2px; }
+
+/* v2.9 – Spielzeit-Timer & Gast-Link */
+.score-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ktimer { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.ktimer b { font-family: var(--display); font-size: 1.9rem; letter-spacing: .04em; line-height: 1; }
+.ktimer.running { border-color: var(--green); }
+.ktimer.running b { color: var(--green); }
+.ktimer.paused b { color: var(--amber); }
+.ktimer.warn { border-color: var(--amber); }
+.ktimer.warn b { color: var(--amber); }
+.ktimer.done { border-color: var(--red); background: rgba(228,66,53,.2); animation: tblink .8s steps(2) infinite; }
+.ktimer.done b { color: #fff; }
+@keyframes tblink { 50% { opacity: .45; } }
+.timer-controls { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 12px; }
+.timer-controls select { width: auto; padding: 6px 10px; }
+.tv-now-head { display: flex; justify-content: space-between; align-items: center; gap: 2vw; }
+.ktimer.tv { padding: .6vw 1.6vw; }
+.ktimer.tv b { font-size: 4.2vw; }
+.ktimer.tv .ktimer-ico { font-size: 2vw; }
+@media (max-width: 760px) { .ktimer.tv b { font-size: 9vw; } }

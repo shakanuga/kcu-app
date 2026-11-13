@@ -33,3 +33,9 @@
   {% endfor %}
 </div>
 {%- endmacro %}
+
+{% macro timer_box(timer, cls='') -%}
+<div class="ktimer {{ cls }}" data-timer data-dur="{{ timer.dur }}" data-ends="{{ timer.ends or '' }}" data-left="{{ timer.left if timer.left is not none else '' }}">
+  <span class="ktimer-ico">⏱</span><b data-timer-text>{{ '%d:%02d' % (timer.dur // 60, timer.dur % 60) }}</b>
+</div>
+{%- endmacro %}

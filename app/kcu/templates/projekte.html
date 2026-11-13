@@ -25,7 +25,6 @@
     <div class="list-card project-card locked">
       <span class="pc-icon">🔒</span>
       <span class="lc-body"><b>{{ p.name }}</b><small>Geheim · nur das Planungsteam ({{ p.team_size }} Personen) sieht die Details</small></span>
-      <a class="btn btn-small" href="{{ url_for('main.projekt_form', pid=p.id) }}">Team</a>
     </div>
     {% endif %}
   {% endfor %}

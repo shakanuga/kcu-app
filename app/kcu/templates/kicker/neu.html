@@ -49,6 +49,7 @@
   <div class="row">
     <label>Name (optional)<input type="text" name="name" maxlength="80" value="{{ form.get('name', '') }}" placeholder="z. B. Oktober-Sitzung"></label>
     <label class="narrow-field">Tore bis Sieg<input type="number" name="ziel" min="1" max="99" value="{{ form.get('ziel') or settings.kicker_ziel or 10 }}"></label>
+    <label class="narrow-field">Spielzeit (min)<input type="text" inputmode="decimal" name="timer" value="{{ form.get('timer') or settings.kicker_timer or '' }}" placeholder="aus"></label>
     <label class="narrow-field" data-only="lms">Leben<input type="number" name="lives" min="1" max="9" value="{{ form.get('lives') or 2 }}"></label>
     <label class="narrow-field" data-only="monster_dyp whist swiss">Runden<input type="number" name="rounds" min="1" max="50" value="{{ form.get('rounds', '') }}" placeholder="auto"></label>
   </div>

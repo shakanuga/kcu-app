@@ -159,7 +159,7 @@ def can(perm):
     if perm == "vorstand":
         return has_role("vorstand")
     if perm == "kasse":           # Kosten, Zahlungen, Kassenbuch, Strafen löschen
-        return has_role("kassenwart") or has_role("vorstand") or is_kasse_vertretung()
+        return has_role("kassenwart") or has_role("vorstand") or has_role("admin") or is_kasse_vertretung()
     if perm == "redaktion":       # Protokolle, Museum, Satzung
         return has_role("redaktion") or has_role("vorstand") or has_role("admin")
     if perm == "projekt_anlegen":

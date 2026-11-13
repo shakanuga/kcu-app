@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "kicker/_macros.html" import team, match_row, bracket_view %}
+{% from "kicker/_macros.html" import team, match_row, bracket_view, timer_box %}
 {% block title %}{{ t.name }} · live{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -18,7 +18,23 @@
   <div>
     {% if current %}
     <section class="card score-card">
-      <p class="card-kicker">Jetzt am Tisch · {{ current.round_label }}</p>
+      <div class="score-top">
+        <p class="card-kicker">Jetzt am Tisch · {{ current.round_label }}</p>
+        {% if timer.dur %}{{ timer_box(timer) }}{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('kicker.timer', tid=t.id) }}" class="timer-controls" data-timer-form data-status="{{ url_for('kicker.status_json', tid=t.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        {% if not timer.dur %}<span class="muted small">Spielzeit:</span>{% endif %}
+        <button class="btn btn-small btn-primary" name="a" value="start" data-show-when="stopped">▶ Start</button>
+        <button class="btn btn-small" name="a" value="pause" data-show-when="running">⏸ Pause</button>
+        <button class="btn btn-small" name="a" value="reset">↺</button>
+        <button class="btn btn-small" name="a" value="plus">+30 s</button>
+        <select name="dur" aria-label="Spielzeit" data-timer-dur>
+          {% for sec, l in [(60,'1 min'), (90,'1:30'), (120,'2 min'), (150,'2:30'), (180,'3 min'), (300,'5 min'), (600,'10 min')] %}
+          <option value="{{ sec }}" {{ 'selected' if timer.dur == sec }}>{{ l }}</option>{% endfor %}
+          {% if timer.dur and timer.dur not in [60,90,120,150,180,300,600] %}<option value="{{ timer.dur }}" selected>{{ timer.dur // 60 }}:{{ '%02d' % (timer.dur % 60) }}</option>{% endif %}
+        </select>
+      </form>
       <form method="post" action="{{ url_for('kicker.ergebnis', tid=t.id, mid=current.id) }}" class="score-form" data-score-form data-ziel="{{ o.ziel }}">
         <input type="hidden" name="csrf" value="{{ csrf_token }}">
         <div class="score-side">
@@ -121,6 +137,21 @@
       </form>
     </section>
     {% endif %}
+    <section class="card" id="gastlink">
+      <h3>📺 Gast-Link</h3>
+      <p class="small muted">Für den Fernseher oder Gäste: Die TV-Ansicht dieses Turniers ohne Anmeldung – nur Spielstand, Tabelle und Timer, sonst nichts aus der App.</p>
+      {% if t.guest_token %}
+      <div class="copy-row">
+        <input type="text" readonly id="guest-url" value="{{ url_for('kicker.gast_tv', token=t.guest_token, _external=True) }}" onclick="this.select()">
+        <button class="btn btn-small" type="button" data-copy="#guest-url">Kopieren</button>
+      </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('kicker.gastlink', tid=t.id) }}" class="actions">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <button class="btn btn-small {{ '' if t.guest_token else 'btn-primary' }}">{{ 'Neuen Link erzeugen' if t.guest_token else 'Gast-Link erzeugen' }}</button>
+        {% if t.guest_token %}<button class="btn btn-small" name="a" value="aus">Abschalten</button>{% endif %}
+      </form>
+    </section>
     <form method="post" action="{{ url_for('kicker.aktion', tid=t.id) }}" class="card actions control-strip">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       {% if o.mode in ('monster_dyp', 'whist') and current %}<button class="btn btn-small" name="a" value="offene_loeschen" data-confirm-btn="Offene Spiele der Runde verwerfen?">Runde verwerfen</button>{% endif %}

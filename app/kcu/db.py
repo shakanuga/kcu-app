@@ -319,6 +319,7 @@ def default_settings():
         "satzung_label": "",
         "kickertool_url": "https://app.kickertool.de/tournaments",
         "kicker_ziel": "10",
+        "kicker_timer": "2",
         "notify_tage_vorher": "3",
         "notify_mode": "admins",
         "rsvp_sperre": "0",
@@ -406,6 +407,8 @@ def init_db(app):
             if col == "kind":
                 conn.execute("UPDATE merch SET kind='einzel' WHERE status='einzelstueck'")
     kt_cols = {r[1] for r in conn.execute("PRAGMA table_info(kt_tournaments)")}
+    if "guest_token" not in kt_cols:
+        conn.execute("ALTER TABLE kt_tournaments ADD COLUMN guest_token TEXT")   # Gast-Link für die TV-Ansicht
     if "counts" not in kt_cols:
         # Wertung: NULL = automatisch (erster Modus des Abends), 1 = zählt immer, 0 = nur zum Spaß
         conn.execute("ALTER TABLE kt_tournaments ADD COLUMN counts INTEGER")

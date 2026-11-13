@@ -135,6 +135,67 @@
     box.querySelectorAll('input').forEach(i => i.addEventListener('change', upd));
   });
 
+  // Kicker: Spielzeit-Timer (läuft auf allen Geräten synchron, Zeit kommt vom Server)
+  let clockOffset = 0;
+  let audioCtx = null;
+  const unlockAudio = () => { try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) { /* kein Ton */ } };
+  document.addEventListener('click', unlockAudio, { once: true });
+  const beep = () => {
+    if (!audioCtx) return;
+    [0, 0.35, 0.7].forEach(t => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = 880; g.gain.value = 0.25;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + 0.22);
+    });
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  };
+  const applyTimer = (tm, now) => {
+    if (!tm) return;
+    if (now) clockOffset = now - Date.now();
+    document.querySelectorAll('[data-timer]').forEach(el => {
+      el.dataset.dur = tm.dur; el.dataset.ends = tm.ends || ''; el.dataset.left = (tm.left === null || tm.left === undefined) ? '' : tm.left;
+    });
+    document.querySelectorAll('[data-timer-dur]').forEach(sel => { if (document.activeElement !== sel && tm.dur) sel.value = tm.dur; });
+  };
+  const paintTimers = () => {
+    let running = false;
+    document.querySelectorAll('[data-timer]').forEach(el => {
+      const dur = +el.dataset.dur || 0, ends = +el.dataset.ends || 0, left = el.dataset.left;
+      let rem = ends ? (ends - (Date.now() + clockOffset)) / 1000 : (left !== '' ? +left : dur);
+      rem = Math.max(0, rem);
+      const s = Math.ceil(rem);
+      el.querySelector('[data-timer-text]').textContent = rem <= 0 && ends ? 'Zeit!' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      el.classList.toggle('running', !!ends && rem > 0);
+      el.classList.toggle('warn', !!ends && rem > 0 && rem <= 15);
+      el.classList.toggle('done', !!ends && rem <= 0);
+      el.classList.toggle('paused', !ends && left !== '');
+      if (ends && rem <= 0 && !el.dataset.beeped) { el.dataset.beeped = '1'; beep(); }
+      if (!ends) delete el.dataset.beeped;
+      if (ends && rem > 0) running = true;
+    });
+    document.querySelectorAll('[data-show-when]').forEach(b => { b.hidden = (b.dataset.showWhen === 'running') !== running; });
+  };
+  if (document.querySelector('[data-timer], [data-timer-form]')) setInterval(paintTimers, 250);
+  document.querySelectorAll('[data-timer-form]').forEach(f => {
+    const send = async (extra) => {
+      const fd = new FormData(f);
+      Object.entries(extra || {}).forEach(([k, v]) => fd.set(k, v));
+      try {
+        const r = await fetch(f.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' });
+        if (r.ok) { const j = await r.json(); applyTimer(j.timer, j.now); paintTimers(); }
+      } catch (e) { f.submit(); }
+    };
+    f.addEventListener('submit', e => { e.preventDefault(); send({ a: (e.submitter && e.submitter.value) || '' }); });
+    f.querySelectorAll('[data-timer-dur]').forEach(sel => sel.addEventListener('change', () => send({ a: '' })));
+    // andere Handys sehen Start/Pause innerhalb weniger Sekunden
+    const sync = async () => {
+      try { const r = await fetch(f.dataset.status, { cache: 'no-store', credentials: 'same-origin' }); if (r.ok) { const j = await r.json(); applyTimer(j.timer, j.now); } } catch (e) { /* egal */ }
+      setTimeout(sync, 3000);
+    };
+    sync();
+  });
+
   // Kicker: TV-Ansicht aktualisiert sich selbst, sobald ein Ergebnis eingetragen wurde
   const tv = document.getElementById('tv');
   if (tv) {
@@ -143,10 +204,12 @@
       try {
         const r = await fetch(tv.dataset.status, { cache: 'no-store', credentials: 'same-origin' });
         if (r.ok) {
-          const v = (await r.json()).v;
+          const j = await r.json();
+          const v = j.v;
+          applyTimer(j.timer, j.now);
           if (last !== null && v !== last) {
             const h = await fetch(tv.dataset.src, { cache: 'no-store', credentials: 'same-origin' });
-            if (h.ok) tv.innerHTML = await h.text();
+            if (h.ok) { tv.innerHTML = await h.text(); applyTimer(j.timer, j.now); }
           }
           last = v;
         }

@@ -65,7 +65,8 @@ wie eine App auf den Startbildschirm legen.
 | **Spielerprofile** | Traumpartner, Angstgegner, Lieblingsopfer, Serien, Zu-Null-Siege, „Kasten“-Pleiten, Verlauf pro Jahr |
 | **Eigene Turniere** | alle Modi wie im [Kickertool](https://kickertool.de): Monster-DYP, Whist, Mit Leben (Last Man Standing), Jeder gegen jeden (einzeln oder Teams), Schweizer System, K.-o. (mit Spiel um Platz 3), Doppel-K.-o. |
 | **Turnier-Extras** | Teams zufällig, selbst oder ausgeglichen nach Stärke; Setzliste; Freilose; Turnierbaum; Buchholz-Wertung; Kasten-Strafe direkt aus dem Ergebnis |
-| **TV-Ansicht** | Vollbild für Laptop am Fernseher, aktualisiert sich selbst: aktuelles Spiel, nächste Spiele, Tabelle bzw. Turnierbaum |
+| **TV-Ansicht** | Vollbild für Laptop am Fernseher, aktualisiert sich selbst: aktuelles Spiel, nächste Spiele, Tabelle bzw. Turnierbaum; per **Gast-Link** auch ohne Anmeldung (z. B. für einen Smart-TV) |
+| **Spielzeit-Timer** | Countdown pro Spiel (z. B. 2 Minuten), startet/pausiert auf allen Handys und dem Fernseher gleichzeitig, mit Signalton |
 | **Kickertool** | Import von Exporten (JSON, `.ktool`, auch als ZIP), Export eigener Turniere als JSON; Spitznamen werden Mitgliedern zugeordnet, Gäste zählen nicht |
 
 ### Technik
@@ -85,7 +86,7 @@ Eine Person kann mehrere Rollen haben (Admin → Mitglied):
 | **Redaktion** | Protokolle, Museum und Satzung pflegen |
 | **Kassenwart** | Zahlungen, Kosten, Strafen löschen, Kassen-Import, Vertretung bestimmen |
 | **Vorstand** | Vorstandsbereich, Termine verwalten, Kicker-Turniere verwalten, Kasse wie Kassenwart |
-| **Admin** | Mitglieder, Rollen, Strafenkatalog, Einstellungen (über `KCU_ADMIN_EMAILS`) |
+| **Admin** | alles Organisatorische inkl. Kasse – aber **nicht** in geheime Planungsprojekte und den Vorstandsbereich (über `KCU_ADMIN_EMAILS`) |
 
 ---
 
@@ -199,8 +200,8 @@ lässt nur eingetragene E-Mail-Adressen durch (Einmal-PIN per Mail). Für kleine
 2. **Tunnel:** Container `cloudflare/cloudflared:latest` im selben Docker-Netz, mit `TUNNEL_TOKEN`;
    Public Hostname `kcu.deinedomain.de` → `http://kcu:8000`.
 3. **Öffentliche Ausnahmen:** eine zweite Access-Anwendung mit Richtlinie **„Umgehen / Jeder“** für die Pfade
-   `kal` (Kalender-Abo, durch geheimen Link geschützt), `static/img` (Logo/App-Symbol),
-   `manifest.webmanifest` (App-Installation) und `impressum`.
+   `kal` (Kalender-Abo, durch geheimen Link geschützt), `kicker/gast` (Gast-Link für die TV-Ansicht, ebenfalls
+   geheimer Link), `static/img` (Logo/App-Symbol), `manifest.webmanifest` (App-Installation) und `impressum`.
 4. Im Container `KCU_DEV_EMAIL` entfernen und setzen:
    `CF_TEAM_DOMAIN` = `meinteam.cloudflareaccess.com`, `CF_ACCESS_AUD` = Audience-Tag der Access-Anwendung.
 5. Neue Mitglieder: E-Mail in der App **und** in der Access-Richtlinie eintragen.

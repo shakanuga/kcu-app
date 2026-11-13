@@ -1,13 +1,15 @@
 """Kicker: Statistik, Kickertool-Import/-Export und eigene Turniere in allen Kickertool-Modi mit TV-Ansicht."""
 import json
 import random
+import secrets
+import time
 from collections import defaultdict
 from datetime import date, datetime
 
 from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
 
 from . import auth, kmodes, kstats, ktimport
-from .db import get_db
+from .db import get_db, get_settings
 from .views import actor, require
 
 bp = Blueprint("kicker", __name__, url_prefix="/kicker")
@@ -669,8 +671,12 @@ def neu():
         if mode == "whist" and not rounds_planned:
             rounds_planned = len(names) - 1 if len(names) % 2 == 0 else len(names)
         title = (f.get("name") or "").strip()[:80] or f"{LIVE_MODES[mode]} {date.today().strftime('%d.%m.%Y')}"
+        try:
+            tmin = float((f.get("timer") or "").replace(",", ".") or 0)
+        except ValueError:
+            tmin = 0
         opts = {"mode": mode, "ziel": ziel, "lives": lives, "rounds_planned": rounds_planned, "entry": entry,
-                "third": bool(f.get("third"))}
+                "third": bool(f.get("third")), "timer_dur": int(max(0, min(60, tmin)) * 60)}
         res, stats = _strength(db)
         strength = {n: (stats.get(res.member_id(n)) or {}).get("stars", 0) for n in names}
         # Teilnehmer festlegen
@@ -794,7 +800,7 @@ def _live_context(tid):
             "upcoming": upcoming, "done": list(reversed(done))[:12], "winner": winner, "res": res,
             "bracket": bracket, "tv_bracket": _tv_columns(bracket), "bye": kmodes.BYE,
             "round_no": max((m["round_no"] for m in matches), default=0),
-            "n_done": len(done), "n_total": len(playable)}
+            "n_done": len(done), "n_total": len(playable), "timer": _timer(t), "guest_token": None}
 
 
 @bp.route("/live/<int:tid>")
@@ -857,6 +863,7 @@ def ergebnis(tid, mid):
         return redirect(url_for("kicker.live", tid=tid))
     db.execute("UPDATE kt_matches SET score1=?, score2=?, status='fertig', played_at=? WHERE id=?",
                (s1, s2, datetime.now().strftime("%Y-%m-%d %H:%M"), mid))
+    _reset_timer(db, t)
     parts = _participants(db, tid)
     finished = False
     if bracket:
@@ -926,15 +933,118 @@ def aktion(tid):
     return redirect(url_for("kicker.live", tid=tid))
 
 
-@bp.route("/live/<int:tid>/status.json")
-def status_json(tid):
+def _status(tid):
     db = get_db()
     r = db.execute("SELECT COUNT(*) n, MAX(COALESCE(played_at,'')) last, SUM(status='fertig') done FROM kt_matches "
                    "WHERE tournament_id=?", (tid,)).fetchone()
-    t = db.execute("SELECT status FROM kt_tournaments WHERE id=?", (tid,)).fetchone()
+    t = db.execute("SELECT * FROM kt_tournaments WHERE id=?", (tid,)).fetchone()
     if not t:
         abort(404)
-    return jsonify({"v": f"{r['n']}-{r['done']}-{r['last']}-{t['status']}"})
+    resp = jsonify({"v": f"{r['n']}-{r['done']}-{r['last']}-{t['status']}", "timer": _timer(t),
+                    "now": int(time.time() * 1000)})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.route("/live/<int:tid>/status.json")
+def status_json(tid):
+    return _status(tid)
+
+
+# --- Spielzeit-Timer ---------------------------------------------------------------
+# Zustand in den Turnier-Optionen: dur (Sekunden), ends (Zeitpunkt in ms, wenn er läuft), left (Sekunden, wenn pausiert)
+
+def _timer(t):
+    o = _opts(t)
+    tm = o.get("timer") or {}
+    dur = int(tm.get("dur") or o.get("timer_dur") or 0)
+    if not dur:
+        try:
+            dur = int(float(get_settings().get("kicker_timer") or 0) * 60)
+        except ValueError:
+            dur = 0
+    return {"dur": dur, "ends": tm.get("ends"), "left": tm.get("left")}
+
+
+@bp.route("/live/<int:tid>/timer", methods=["POST"])
+def timer(tid):
+    db = get_db()
+    t = db.execute("SELECT * FROM kt_tournaments WHERE id=? AND source='live'", (tid,)).fetchone()
+    if not t:
+        abort(404)
+    o = _opts(t)
+    tm = _timer(t)
+    a = request.form.get("a")
+    now = int(time.time() * 1000)
+    if request.form.get("dur", type=int):
+        tm["dur"] = max(10, min(3600, request.form.get("dur", type=int)))
+        o["timer_dur"] = tm["dur"]
+        if not tm["ends"]:
+            tm["left"] = None
+    if a == "start":
+        left = tm["left"] if tm["left"] is not None else tm["dur"]
+        tm.update(ends=now + int(left * 1000), left=None)
+    elif a == "pause" and tm["ends"]:
+        tm.update(left=max(0, round((tm["ends"] - now) / 1000)), ends=None)
+    elif a == "reset":
+        tm.update(ends=None, left=None)
+    elif a == "plus":
+        if tm["ends"]:
+            tm["ends"] += 30000
+        else:
+            tm["left"] = (tm["left"] if tm["left"] is not None else tm["dur"]) + 30
+    o["timer"] = tm
+    db.execute("UPDATE kt_tournaments SET options=? WHERE id=?", (json.dumps(o), tid))
+    db.commit()
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify({"timer": tm, "now": now})
+    return redirect(url_for("kicker.live", tid=tid))
+
+
+def _reset_timer(db, t):
+    o = _opts(t)
+    if o.get("timer"):
+        o["timer"].update(ends=None, left=None)
+        db.execute("UPDATE kt_tournaments SET options=? WHERE id=?", (json.dumps(o), t["id"]))
+
+
+# --- Gast-Link: TV-Ansicht ohne Anmeldung (z. B. für den Fernseher) --------------------
+
+@bp.route("/live/<int:tid>/gastlink", methods=["POST"])
+def gastlink(tid):
+    db = get_db()
+    t = db.execute("SELECT * FROM kt_tournaments WHERE id=? AND source='live'", (tid,)).fetchone()
+    if not t:
+        abort(404)
+    token = None if request.form.get("a") == "aus" else secrets.token_urlsafe(12)
+    db.execute("UPDATE kt_tournaments SET guest_token=? WHERE id=?", (token, tid))
+    db.commit()
+    flash("Gast-Link erstellt." if token else "Gast-Link abgeschaltet.", "ok")
+    return redirect(url_for("kicker.live", tid=tid) + "#gastlink")
+
+
+def _guest_tournament(token):
+    if not token or len(token) < 10:
+        abort(404)
+    t = get_db().execute("SELECT * FROM kt_tournaments WHERE guest_token=? AND source='live'", (token,)).fetchone()
+    if not t:
+        abort(404)
+    return t
+
+
+@bp.route("/gast/<token>")
+def gast_tv(token):
+    t = _guest_tournament(token)
+    ctx = _live_context(t["id"])
+    ctx["guest_token"] = token
+    if request.args.get("partial"):
+        return render_template("kicker/_tv_inner.html", **ctx)
+    return render_template("kicker/tv.html", **ctx)
+
+
+@bp.route("/gast/<token>/status.json")
+def gast_status(token):
+    return _status(_guest_tournament(token)["id"])
 
 
 # --- Export (Kickertool-ähnliches JSON, z. B. als Sicherung) -----------------------
