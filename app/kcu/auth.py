@@ -12,7 +12,8 @@ Rollen (mehrere pro Person möglich):
   admin      – Verwaltung: Mitglieder, Rollen, Strafenkatalog, Termine, Einstellungen
   vorstand   – Vorstandsbereich, Kasse, Redaktion, Projekte anlegen
   kassenwart – Kasse (Zahlungen, Kassenbuch), Projekte anlegen
-  redaktion  – Protokolle, Museum, Satzung
+  redaktion  – Protokolle bearbeiten/löschen/importieren, Museum, Satzung
+               (neue Protokolle hochladen darf jedes Mitglied)
   Dazu kommt die zeitweise Kassenwart-Vertretung (Einstellung kasse_vertretung_*).
 """
 import os
@@ -160,7 +161,7 @@ def can(perm):
         return has_role("vorstand")
     if perm == "kasse":           # Kosten, Zahlungen, Kassenbuch, Strafen löschen
         return has_role("kassenwart") or has_role("vorstand") or has_role("admin") or is_kasse_vertretung()
-    if perm == "redaktion":       # Protokolle, Museum, Satzung
+    if perm == "redaktion":       # Protokolle bearbeiten/löschen, Museum, Satzung
         return has_role("redaktion") or has_role("vorstand") or has_role("admin")
     if perm == "projekt_anlegen":
         return has_role("admin") or has_role("vorstand") or has_role("kassenwart")

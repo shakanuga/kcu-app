@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <h1 class="page-title">Protokolle</h1>
-  {% if can('redaktion') %}<div class="actions"><a class="btn" href="{{ url_for('main.protokoll_import') }}">⬆ PDFs importieren</a><a class="btn btn-primary" href="{{ url_for('main.protokoll_form') }}">+ Neues Protokoll</a></div>{% endif %}
+  <div class="actions">{% if can('redaktion') %}<a class="btn" href="{{ url_for('main.protokoll_import') }}">⬆ PDFs importieren</a>{% endif %}<a class="btn btn-primary" href="{{ url_for('main.protokoll_form') }}">+ Neues Protokoll</a></div>
 </div>
 {% if rows %}
 <div class="list-cards">

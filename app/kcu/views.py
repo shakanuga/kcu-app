@@ -710,8 +710,10 @@ def protokoll(pid):
 
 @bp.route("/protokolle/neu", methods=["GET", "POST"])
 @bp.route("/protokolle/<int:pid>/bearbeiten", methods=["GET", "POST"])
-@require("redaktion")
 def protokoll_form(pid=None):
+    # Neue Protokolle darf jedes Mitglied hochladen, Bearbeiten bleibt bei der Redaktion.
+    if pid and not auth.can("redaktion"):
+        abort(403, "Dafür fehlen dir die Rechte.")
     db = get_db()
     p = db.execute("SELECT * FROM protocols WHERE id=?", (pid,)).fetchone() if pid else None
     if pid and not p:
@@ -2173,8 +2175,8 @@ def calendar_feed(token):
 POSITIONS = {"": "–", "sturm": "Sturm", "abwehr": "Abwehr", "beides": "Allrounder"}
 
 RIGHTS = [
-    ("immer", "Termine sehen, zu- und absagen, abstimmen, Strafen eintragen, Turniere spielen"),
-    ("redaktion", "Protokolle, Museum und Satzung pflegen"),
+    ("immer", "Termine sehen, zu- und absagen, abstimmen, Strafen eintragen, Turniere spielen, Protokolle hochladen"),
+    ("redaktion", "Protokolle bearbeiten und löschen, Museum und Satzung pflegen"),
     ("kasse", "Zahlungen, Kosten und Kassenbuch, Strafen löschen"),
     ("termine", "Termine anlegen, verschieben und absagen"),
     ("vorstand", "Vorstandsbereich und Vorstandsabstimmungen"),

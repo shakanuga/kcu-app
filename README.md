@@ -82,8 +82,8 @@ Eine Person kann mehrere Rollen haben (Admin → Mitglied):
 
 | Rolle | Darf |
 |---|---|
-| **Mitglied** | alles Öffentliche, Strafen eintragen, zu-/absagen, abstimmen, Turniere starten |
-| **Redaktion** | Protokolle, Museum und Satzung pflegen |
+| **Mitglied** | alles Öffentliche, Strafen eintragen, zu-/absagen, abstimmen, Turniere starten, Protokolle hochladen |
+| **Redaktion** | Protokolle bearbeiten, löschen und gesammelt importieren, Museum und Satzung pflegen |
 | **Kassenwart** | Zahlungen, Kosten, Strafen löschen, Kassen-Import, Vertretung bestimmen |
 | **Vorstand** | Vorstandsbereich, Termine verwalten, Kicker-Turniere verwalten, Kasse wie Kassenwart |
 | **Admin** | alles Organisatorische inkl. Kasse – aber **nicht** in geheime Planungsprojekte und den Vorstandsbereich (über `KCU_ADMIN_EMAILS`) |
