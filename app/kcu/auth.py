@@ -13,7 +13,7 @@ Rollen (mehrere pro Person möglich):
   vorstand   – Vorstandsbereich, Kasse, Redaktion, Projekte anlegen
   kassenwart – Kasse (Zahlungen, Kassenbuch), Projekte anlegen
   redaktion  – Protokolle bearbeiten/löschen/importieren, Museum, Satzung
-               (neue Protokolle hochladen darf jedes Mitglied)
+               (neue Protokolle hochladen darf jedes Mitglied, eigene bis zum nächsten Morgen nachbessern)
   Dazu kommt die zeitweise Kassenwart-Vertretung (Einstellung kasse_vertretung_*).
 """
 import os

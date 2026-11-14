@@ -694,6 +694,37 @@ def museum_foto_loeschen(pid):
 
 # --- Protokolle ---------------------------------------------------------------
 
+PROTOKOLL_FRIST_UHR = 6   # eigene Protokolle bis zum nächsten Morgen um 6 Uhr selbst bearbeitbar
+
+
+def _jetzt_lokal():
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(os.environ.get("TZ") or "Europe/Berlin")).replace(tzinfo=None)
+    except Exception:  # noqa: BLE001
+        return datetime.now()
+
+
+def _protokoll_frist(now):
+    """Nächster Morgen um 6 Uhr (mindestens 3 Stunden nach dem Hochladen)."""
+    frist = now.replace(hour=PROTOKOLL_FRIST_UHR, minute=0, second=0, microsecond=0)
+    while frist < now + timedelta(hours=3):
+        frist += timedelta(days=1)
+    return frist
+
+
+def _protokoll_eigenes_offen(p):
+    """Eigenes Protokoll, Bearbeitungsfrist läuft noch."""
+    u = g.get("user")
+    if not p or not u or not u.get("id") or p["created_by_id"] != u["id"] or not p["edit_until"]:
+        return False
+    return _jetzt_lokal().strftime("%Y-%m-%d %H:%M:%S") <= p["edit_until"]
+
+
+def protokoll_darf_bearbeiten(p):
+    return auth.can("redaktion") or _protokoll_eigenes_offen(p)
+
+
 @bp.route("/protokolle")
 def protokolle():
     rows = get_db().execute("SELECT * FROM protocols ORDER BY date DESC, id DESC").fetchall()
@@ -705,19 +736,21 @@ def protokoll(pid):
     p = get_db().execute("SELECT * FROM protocols WHERE id=?", (pid,)).fetchone()
     if not p:
         abort(404)
-    return render_template("protokoll.html", p=p)
+    return render_template("protokoll.html", p=p, darf=protokoll_darf_bearbeiten(p),
+                           eigen_bis=p["edit_until"] if _protokoll_eigenes_offen(p) and not auth.can("redaktion") else None)
 
 
 @bp.route("/protokolle/neu", methods=["GET", "POST"])
 @bp.route("/protokolle/<int:pid>/bearbeiten", methods=["GET", "POST"])
 def protokoll_form(pid=None):
     # Neue Protokolle darf jedes Mitglied hochladen, Bearbeiten bleibt bei der Redaktion.
-    if pid and not auth.can("redaktion"):
-        abort(403, "Dafür fehlen dir die Rechte.")
+    # Wer es hochgeladen hat, darf bis zum nächsten Morgen selbst nachbessern.
     db = get_db()
     p = db.execute("SELECT * FROM protocols WHERE id=?", (pid,)).fetchone() if pid else None
     if pid and not p:
         abort(404)
+    if p and not protokoll_darf_bearbeiten(p):
+        abort(403, "Die Frist zum Bearbeiten ist abgelaufen – bitte bei der Redaktion melden.")
     if request.method == "POST":
         d = parse_date(request.form.get("date"), date.today().isoformat())
         title = (request.form.get("title") or "").strip()[:150] or f"Sitzung vom {logic.date_de(d)}"
@@ -740,8 +773,10 @@ def protokoll_form(pid=None):
             db.execute("UPDATE protocols SET date=?, title=?, body=?, file=?, file_name=?, updated_at=datetime('now') WHERE id=?",
                        (d, title, body, file, file_name, pid))
         else:
-            cur = db.execute("INSERT INTO protocols(date, title, body, file, file_name, created_by) VALUES (?,?,?,?,?,?)",
-                             (d, title, body, file, file_name, actor()))
+            frist = _protokoll_frist(_jetzt_lokal()).strftime("%Y-%m-%d %H:%M:%S")
+            cur = db.execute("INSERT INTO protocols(date, title, body, file, file_name, created_by, created_by_id, edit_until)"
+                             " VALUES (?,?,?,?,?,?,?,?)",
+                             (d, title, body, file, file_name, actor(), g.user.get("id"), frist))
             pid = cur.lastrowid
         db.commit()
         flash("Protokoll gespeichert.", "ok")
@@ -750,10 +785,11 @@ def protokoll_form(pid=None):
 
 
 @bp.route("/protokolle/<int:pid>/loeschen", methods=["POST"])
-@require("redaktion")
 def protokoll_loeschen(pid):
     db = get_db()
     p = db.execute("SELECT * FROM protocols WHERE id=?", (pid,)).fetchone()
+    if p and not protokoll_darf_bearbeiten(p):
+        abort(403, "Dafür fehlen dir die Rechte.")
     if p and p["file"]:
         media.delete_upload(p["file"])
     db.execute("DELETE FROM protocols WHERE id=?", (pid,))
@@ -2175,7 +2211,7 @@ def calendar_feed(token):
 POSITIONS = {"": "–", "sturm": "Sturm", "abwehr": "Abwehr", "beides": "Allrounder"}
 
 RIGHTS = [
-    ("immer", "Termine sehen, zu- und absagen, abstimmen, Strafen eintragen, Turniere spielen, Protokolle hochladen"),
+    ("immer", "Termine sehen, zu- und absagen, abstimmen, Strafen eintragen, Turniere spielen, Protokolle hochladen (und bis zum nächsten Morgen selbst nachbessern)"),
     ("redaktion", "Protokolle bearbeiten und löschen, Museum und Satzung pflegen"),
     ("kasse", "Zahlungen, Kosten und Kassenbuch, Strafen löschen"),
     ("termine", "Termine anlegen, verschieben und absagen"),

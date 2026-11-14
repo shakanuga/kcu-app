@@ -388,6 +388,11 @@ def init_db(app):
             word = (note or "").split(" ")[1].strip(" –-,").lower() if len((note or "").split(" ")) > 1 else ""
             if word in months and d:
                 conn.execute("UPDATE payments SET period=? WHERE id=?", (f"{d[:4]}-{months.index(word) + 1:02d}", pid))
+    proto_cols = {r[1] for r in conn.execute("PRAGMA table_info(protocols)")}
+    if "created_by_id" not in proto_cols:   # wer hochgeladen hat – darf bis edit_until selbst nachbessern
+        conn.execute("ALTER TABLE protocols ADD COLUMN created_by_id INTEGER REFERENCES members(id) ON DELETE SET NULL")
+    if "edit_until" not in proto_cols:      # Ortszeit 'YYYY-MM-DD HH:MM:SS'
+        conn.execute("ALTER TABLE protocols ADD COLUMN edit_until TEXT")
     if "since" not in {r[1] for r in conn.execute("PRAGMA table_info(member_roles)")}:
         conn.execute("ALTER TABLE member_roles ADD COLUMN since TEXT")   # YYYY-MM-DD: seit wann (für versetzte Wahlen)
     poll_cols = {r[1] for r in conn.execute("PRAGMA table_info(polls)")}

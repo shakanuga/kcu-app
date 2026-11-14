@@ -8,7 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import auth, db, logic, media
 
-VERSION = "2.9.1"
+VERSION = "2.9.2"
 
 
 def _secret_key(data_dir):

@@ -3,6 +3,7 @@
 {% block content %}
 <a class="back" href="{{ url_for('main.protokoll', pid=p.id) if p else url_for('main.protokolle') }}">← zurück</a>
 <h1 class="page-title">{{ 'Protokoll bearbeiten' if p else 'Neues Protokoll' }}</h1>
+{% if not p and not can('redaktion') %}<p class="hint">Nach dem Speichern kannst du dein Protokoll noch bis zum nächsten Morgen um 6 Uhr selbst bearbeiten – danach nur noch die Redaktion.</p>{% endif %}
 <form class="card form" method="post" enctype="multipart/form-data">
   <input type="hidden" name="csrf" value="{{ csrf_token }}">
   <div class="row">

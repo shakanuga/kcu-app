@@ -82,7 +82,7 @@ Eine Person kann mehrere Rollen haben (Admin → Mitglied):
 
 | Rolle | Darf |
 |---|---|
-| **Mitglied** | alles Öffentliche, Strafen eintragen, zu-/absagen, abstimmen, Turniere starten, Protokolle hochladen |
+| **Mitglied** | alles Öffentliche, Strafen eintragen, zu-/absagen, abstimmen, Turniere starten, Protokolle hochladen (eigene bis zum nächsten Morgen um 6 Uhr selbst bearbeiten/löschen) |
 | **Redaktion** | Protokolle bearbeiten, löschen und gesammelt importieren, Museum und Satzung pflegen |
 | **Kassenwart** | Zahlungen, Kosten, Strafen löschen, Kassen-Import, Vertretung bestimmen |
 | **Vorstand** | Vorstandsbereich, Termine verwalten, Kicker-Turniere verwalten, Kasse wie Kassenwart |

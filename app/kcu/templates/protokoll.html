@@ -11,7 +11,8 @@
   {% endif %}
   {% if p.body %}<div class="prose">{{ p.body | markdown }}</div>{% endif %}
   {% if p.file and not p.body %}<iframe class="pdf" src="{{ url_for('main.files', name=p.file) }}" title="Protokoll"></iframe>{% endif %}
-  {% if can('redaktion') %}
+  {% if darf %}
+  {% if eigen_bis %}<p class="hint">Du kannst dein Protokoll noch bis {{ eigen_bis[:10] | date_de }}, {{ eigen_bis[11:16] }} Uhr bearbeiten oder löschen. Danach nur noch die Redaktion.</p>{% endif %}
   <div class="actions">
     <a class="btn" href="{{ url_for('main.protokoll_form', pid=p.id) }}">Bearbeiten</a>
     <form method="post" action="{{ url_for('main.protokoll_loeschen', pid=p.id) }}" data-confirm="Protokoll wirklich löschen?">
